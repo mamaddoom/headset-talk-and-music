@@ -81,6 +81,19 @@ class MainActivity : Activity() {
     private lateinit var appAudioStatus: TextView
     private lateinit var syncLabel: TextView
     private lateinit var driveOverlay: View
+    private lateinit var presets: List<View>
+    private lateinit var twoPhonePanel: View
+    private lateinit var btnPhoneMusic: Button
+    private lateinit var btnPhoneMic: Button
+    private lateinit var setupName: EditText
+    private lateinit var editName: EditText
+    private lateinit var setupFlow: TextView
+    private lateinit var setupChecklist: TextView
+    private lateinit var talkRoleNote: TextView
+    private lateinit var micSection: View
+    private lateinit var audioModeRow: View
+    private lateinit var modeSaved: View
+    private lateinit var musicCard: View
     private lateinit var driveStatus: TextView
     private lateinit var driveMusicTitle: TextView
     private lateinit var driveTalk: Button
@@ -195,6 +208,19 @@ class MainActivity : Activity() {
         appAudioStatus = findViewById(R.id.appAudioStatus)
         syncLabel = findViewById(R.id.syncLabel)
         driveOverlay = findViewById(R.id.driveOverlay)
+        presets = listOf(R.id.preset1, R.id.preset2, R.id.preset3, R.id.preset4).map { findViewById(it) }
+        twoPhonePanel = findViewById(R.id.twoPhonePanel)
+        btnPhoneMusic = findViewById(R.id.btnPhoneMusic)
+        btnPhoneMic = findViewById(R.id.btnPhoneMic)
+        setupName = findViewById(R.id.setupName)
+        editName = findViewById(R.id.editName)
+        setupFlow = findViewById(R.id.setupFlow)
+        setupChecklist = findViewById(R.id.setupChecklist)
+        talkRoleNote = findViewById(R.id.talkRoleNote)
+        micSection = findViewById(R.id.micSection)
+        audioModeRow = findViewById(R.id.audioModeRow)
+        modeSaved = findViewById(R.id.modeSaved)
+        musicCard = findViewById(R.id.musicCard)
         driveStatus = findViewById(R.id.driveStatus)
         driveMusicTitle = findViewById(R.id.driveMusicTitle)
         driveTalk = findViewById(R.id.driveTalk)
@@ -241,6 +267,10 @@ class MainActivity : Activity() {
         }
         findViewById<Button>(R.id.btnDrive).setOnClickListener { showDriveScreen(true) }
         findViewById<Button>(R.id.driveExit).setOnClickListener { showDriveScreen(false) }
+
+        presets.forEachIndexed { i, v -> v.setOnClickListener { applySetup(i + 1, settings.twoPhoneMic) } }
+        btnPhoneMusic.setOnClickListener { applySetup(3, twoPhoneMic = false) }
+        btnPhoneMic.setOnClickListener { applySetup(3, twoPhoneMic = true) }
 
         btnModeHifi.setOnClickListener { setAudioMode(callMode = false) }
         btnModeCall.setOnClickListener { setAudioMode(callMode = true) }
@@ -346,13 +376,17 @@ class MainActivity : Activity() {
         // --- music: any app
         btnAppAudio.setOnClickListener { toggleAppAudio() }
 
-        findViewById<EditText>(R.id.editName).apply {
-            setText(settings.name)
-            addTextChangedListener(object : TextWatcher {
+        // Two name fields (settings card, two-phone setup) edit the same name.
+        for (field in listOf(editName, setupName)) {
+            field.setText(settings.name)
+            field.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun afterTextChanged(s: Editable?) {
+                    if (!field.hasFocus()) return
                     settings.name = s?.toString().orEmpty()
+                    val other = if (field === editName) setupName else editName
+                    if (other.text.toString() != settings.name) other.setText(settings.name)
                 }
             })
         }
@@ -378,7 +412,8 @@ class MainActivity : Activity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun onTalkTouch(v: View, ev: MotionEvent): Boolean {
         val e = engine
-        if (!settings.headsetMic) {
+        if (settings.role == Settings.Role.LISTEN_ONLY) return true
+        if (tapToTalk) {
             // Music-quality mode: a tap starts or ends a talk session.
             if (ev.actionMasked == MotionEvent.ACTION_UP) {
                 if (e?.running == true) {
@@ -467,6 +502,23 @@ class MainActivity : Activity() {
             false
         }
         else -> true
+    }
+
+    /** Music-quality mode with the headset mic: talking needs a tap. */
+    private val tapToTalk: Boolean
+        get() = !settings.headsetMic && settings.role == Settings.Role.NORMAL &&
+            settings.micSource == Settings.MicSource.HEADSET
+
+    private fun applySetup(preset: Int, twoPhoneMic: Boolean) {
+        val e = engine
+        if (e != null) {
+            e.setSetup(preset, twoPhoneMic)
+        } else {
+            settings.setupPreset = preset
+            settings.twoPhoneMic = twoPhoneMic
+        }
+        updateVolumeStream()
+        render()
     }
 
     private fun setAudioMode(callMode: Boolean) {
@@ -610,7 +662,10 @@ class MainActivity : Activity() {
     }
 
     private fun updateVolumeStream() {
-        volumeControlStream = if (settings.headsetMic) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
+        // Volume keys follow whichever stream is actually audible.
+        val callLink = settings.micSource == Settings.MicSource.HEADSET &&
+            (settings.role == Settings.Role.MIC_ONLY || (settings.role == Settings.Role.NORMAL && settings.headsetMic))
+        volumeControlStream = if (callLink) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
     }
 
     private fun renderSyncLabel() {
@@ -658,6 +713,7 @@ class MainActivity : Activity() {
             linkQuality.setTextColor(getColor(if (st.linkHighQuality) R.color.ok else R.color.accent))
         }
 
+        renderSetup(st)
         renderTalk(st)
         renderConnection(st)
         renderMusic(e, st)
@@ -668,7 +724,8 @@ class MainActivity : Activity() {
         driveStatus.text = status.text
         driveStatus.setTextColor(status.currentTextColor)
         driveMusicTitle.text = if (st?.musicPlaying == true) st.musicTitle else ""
-        val hifi = !settings.headsetMic
+        val hifi = tapToTalk
+        driveTalk.visibility = if (settings.role == Settings.Role.LISTEN_ONLY) View.GONE else View.VISIBLE
         driveTalk.isActivated = when {
             hifi -> st?.talkReady == true
             settings.ptt -> st?.pttPressed == true
@@ -687,11 +744,94 @@ class MainActivity : Activity() {
         driveMusic.setText(if (st?.filePlaying == true) R.string.drive_music_pause else R.string.drive_music_play)
     }
 
+    private fun renderSetup(st: Engine.State?) {
+        val preset = settings.setupPreset
+        presets.forEachIndexed { i, v -> v.isSelected = i + 1 == preset }
+        val two = preset == 3
+        twoPhonePanel.visibility = if (two) View.VISIBLE else View.GONE
+        btnPhoneMusic.isSelected = two && !settings.twoPhoneMic
+        btnPhoneMic.isSelected = two && settings.twoPhoneMic
+        if (!setupName.hasFocus() && setupName.text.toString() != settings.name) setupName.setText(settings.name)
+        if (!editName.hasFocus() && editName.text.toString() != settings.name) editName.setText(settings.name)
+
+        // How the audio flows in this setup.
+        val role = settings.role
+        val mic = when {
+            role == Settings.Role.LISTEN_ONLY -> R.string.src_none
+            settings.micSource == Settings.MicSource.WIRED -> R.string.src_wired
+            settings.micSource == Settings.MicSource.PHONE -> R.string.src_phone
+            else -> R.string.src_headset_mic
+        }
+        val out = when (role) {
+            Settings.Role.MIC_ONLY -> R.string.out_none
+            Settings.Role.LISTEN_ONLY -> R.string.out_headset_right
+            Settings.Role.NORMAL -> R.string.out_headset
+        }
+        val quality = when {
+            role == Settings.Role.MIC_ONLY -> R.string.q_none
+            role == Settings.Role.LISTEN_ONLY -> R.string.q_full_mono
+            settings.micSource != Settings.MicSource.HEADSET -> R.string.q_full
+            settings.headsetMic -> if (st?.leAudio == true) R.string.q_full else R.string.q_call
+            else -> R.string.q_tap
+        }
+        setupFlow.text = listOf(
+            getString(R.string.flow_mic, getString(mic)),
+            getString(R.string.flow_out, getString(out)),
+            getString(R.string.flow_quality, getString(quality)),
+        ).joinToString("\n")
+
+        // Live checklist.
+        val checks = ArrayList<String>()
+        checks += getString(if (st != null) R.string.chk_running else R.string.chk_start)
+        val headset = st?.headsetConnected ?: false
+        if (role != Settings.Role.MIC_ONLY || settings.micSource == Settings.MicSource.HEADSET) {
+            checks += getString(if (headset) R.string.chk_headset_ok else R.string.chk_headset_missing)
+        }
+        when {
+            settings.micSource == Settings.MicSource.WIRED ->
+                checks += getString(if (st?.wiredMicFound == true) R.string.chk_wired_ok else R.string.chk_wired_missing)
+            settings.micSource == Settings.MicSource.PHONE -> checks += getString(R.string.chk_phone_mic)
+        }
+        if (two) {
+            checks += getString(if (settings.twoPhoneMic) R.string.chk_one_ear_left else R.string.chk_one_ear_right)
+            if (st != null) {
+                checks += if (st.otherPhoneConnected) {
+                    getString(R.string.chk_other_ok)
+                } else {
+                    getString(
+                        R.string.chk_other_missing,
+                        getString(if (settings.twoPhoneMic) R.string.two_phone_music else R.string.two_phone_mic)
+                            .replace("\n", " · "),
+                    )
+                }
+            }
+        }
+        setupChecklist.text = checks.joinToString("\n")
+    }
+
     private fun renderTalk(st: Engine.State?) {
-        val hifi = !settings.headsetMic
-        btnModeHifi.isSelected = hifi
-        btnModeCall.isSelected = !hifi
-        modeNote.setText(if (hifi) R.string.mode_hifi_note else R.string.mode_call_note)
+        val role = settings.role
+        val tap = tapToTalk
+        // Audio-mode choice only matters with the headset mic on a normal phone.
+        val modeChoice = role == Settings.Role.NORMAL && settings.micSource == Settings.MicSource.HEADSET
+        audioModeRow.visibility = if (modeChoice) View.VISIBLE else View.GONE
+        modeNote.visibility = audioModeRow.visibility
+        modeSaved.visibility = audioModeRow.visibility
+        micSection.visibility = if (role == Settings.Role.LISTEN_ONLY) View.GONE else View.VISIBLE
+        musicCard.visibility = if (role == Settings.Role.MIC_ONLY) View.GONE else View.VISIBLE
+        val roleNote = when {
+            role == Settings.Role.LISTEN_ONLY -> R.string.talk_role_listen
+            role == Settings.Role.MIC_ONLY -> R.string.talk_role_mic
+            settings.micSource != Settings.MicSource.HEADSET -> R.string.talk_local_mic
+            else -> 0
+        }
+        talkRoleNote.visibility = if (roleNote != 0) View.VISIBLE else View.GONE
+        if (roleNote != 0) talkRoleNote.setText(roleNote)
+
+        val hifi = tap
+        btnModeHifi.isSelected = !settings.headsetMic
+        btnModeCall.isSelected = settings.headsetMic
+        modeNote.setText(if (!settings.headsetMic) R.string.mode_hifi_note else R.string.mode_call_note)
         callControls.visibility = if (hifi) View.GONE else View.VISIBLE
 
         val ptt = st?.ptt ?: settings.ptt
@@ -730,10 +870,15 @@ class MainActivity : Activity() {
             getString(R.string.no_peers)
         } else {
             st.peers.joinToString("\n") {
+                val icon = when {
+                    it.micOnly -> "🎤 "
+                    it.listenOnly -> "🔊 "
+                    else -> ""
+                }
                 getString(
-                    R.string.peer_line, it.name,
+                    R.string.peer_line, icon + it.name,
                     getString(if (it.talking) R.string.talking else R.string.idle), it.quality,
-                )
+                ) + if (it.mine) " " + getString(R.string.peer_mine) else ""
             }
         }
         val ips = st?.myIps ?: Transport.localAddresses()

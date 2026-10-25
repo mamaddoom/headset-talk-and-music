@@ -72,99 +72,350 @@
                 android:textColor="@color/text"
                 android:textSize="18sp" />
 
-            <!-- Talk -->
+            <!-- Trip setup: pick your gear, everything else follows -->
             <LinearLayout style="@style/Card">
+
+                <TextView style="@style/CardTitle" android:text="@string/sec_setup" />
+
+                <TextView style="@style/Note" android:text="@string/setup_intro" />
+
+                <LinearLayout
+                    android:id="@+id/preset1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/preset1_icon"
+                        android:textSize="26sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset1_title"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset1_desc"
+                            android:textColor="@color/text_dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/preset2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/preset2_icon"
+                        android:textSize="26sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset2_title"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset2_desc"
+                            android:textColor="@color/text_dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/preset3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/preset3_icon"
+                        android:textSize="26sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset3_title"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset3_desc"
+                            android:textColor="@color/text_dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/preset4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/preset4_icon"
+                        android:textSize="26sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset4_title"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/preset4_desc"
+                            android:textColor="@color/text_dim"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Two-phone setup: which phone is this? -->
+                <LinearLayout
+                    android:id="@+id/twoPhonePanel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView style="@style/Body" android:textStyle="bold" android:text="@string/two_phone_which" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp">
+
+                        <Button
+                            android:id="@+id/btnPhoneMusic"
+                            style="@style/BigButton"
+                            android:layout_height="88dp"
+                            android:text="@string/two_phone_music"
+                            android:textSize="16sp" />
+
+                        <Button
+                            android:id="@+id/btnPhoneMic"
+                            style="@style/BigButton"
+                            android:layout_height="88dp"
+                            android:text="@string/two_phone_mic"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <TextView style="@style/Note" android:text="@string/two_phone_note" />
+
+                    <EditText
+                        android:id="@+id/setupName"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:hint="@string/name_hint"
+                        android:importantForAutofill="no"
+                        android:inputType="textPersonName"
+                        android:maxLength="24"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/text_dim" />
+                </LinearLayout>
+
+                <!-- How audio flows in this setup, and a live checklist -->
+                <TextView
+                    android:id="@+id/setupFlow"
+                    style="@style/Body"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/card"
+                    android:lineSpacingMultiplier="1.3"
+                    android:padding="12dp" />
+
+                <TextView
+                    android:id="@+id/setupChecklist"
+                    style="@style/Body"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingMultiplier="1.3" />
+            </LinearLayout>
+
+            <!-- Talk -->
+            <LinearLayout android:id="@+id/talkCard" style="@style/Card">
 
                 <TextView style="@style/CardTitle" android:text="@string/sec_talk" />
 
-                <!-- Audio mode: music quality (tap to talk) or call mode (mic always on) -->
+                <TextView android:id="@+id/talkRoleNote" style="@style/Body" android:visibility="gone" />
+
+                <!-- Everything about the mic; hidden on a play-only phone -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_hifi" />
-                    <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_call" />
-                </LinearLayout>
-
-                <TextView android:id="@+id/modeNote" style="@style/Note" />
-                <TextView style="@style/Note" android:layout_marginBottom="8dp" android:text="@string/mode_saved" />
-
-                <Button
-                    android:id="@+id/btnPtt"
-                    android:layout_width="match_parent"
-                    android:layout_height="140dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="@drawable/button_ptt"
-                    android:stateListAnimator="@null"
-                    android:text="@string/ptt_hold"
-                    android:textAllCaps="false"
-                    android:textColor="@color/text"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:id="@+id/callControls"
+                    android:id="@+id/micSection"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
+                    <!-- Audio mode: music quality (tap to talk) or call mode (mic always on) -->
                     <LinearLayout
+                        android:id="@+id/audioModeRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
-                        <Button
-                            android:id="@+id/btnModeVox"
-                            style="@style/BigButton"
-                            android:text="@string/mode_vox" />
-
-                        <Button
-                            android:id="@+id/btnModePtt"
-                            style="@style/BigButton"
-                            android:text="@string/mode_ptt" />
+                        <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_hifi" />
+                        <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_call" />
                     </LinearLayout>
+
+                    <TextView android:id="@+id/modeNote" style="@style/Note" />
+                    <TextView android:id="@+id/modeSaved" style="@style/Note" android:layout_marginBottom="8dp" android:text="@string/mode_saved" />
+
+                    <Button
+                        android:id="@+id/btnPtt"
+                        android:layout_width="match_parent"
+                        android:layout_height="140dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/button_ptt"
+                        android:stateListAnimator="@null"
+                        android:text="@string/ptt_hold"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
 
                     <LinearLayout
+                        android:id="@+id/callControls"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
 
-                        <Button
-                            android:id="@+id/btnMute"
-                            style="@style/BigButton"
-                            android:text="@string/mute" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <Button
+                                android:id="@+id/btnModeVox"
+                                style="@style/BigButton"
+                                android:text="@string/mode_vox" />
+
+                            <Button
+                                android:id="@+id/btnModePtt"
+                                style="@style/BigButton"
+                                android:text="@string/mode_ptt" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <Button
+                                android:id="@+id/btnMute"
+                                style="@style/BigButton"
+                                android:text="@string/mute" />
+                        </LinearLayout>
                     </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/onAir"
+                        style="@style/Body"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/transmitting"
+                        android:textColor="@color/danger"
+                        android:textStyle="bold"
+                        android:visibility="invisible" />
+
+                    <TextView style="@style/Label" android:text="@string/mic_level" />
+
+                    <ProgressBar
+                        android:id="@+id/micMeter"
+                        style="@android:style/Widget.ProgressBar.Horizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="12dp"
+                        android:layout_marginTop="6dp"
+                        android:max="100"
+                        android:progressDrawable="@drawable/meter" />
+
+                    <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
+
+                    <TextView android:id="@+id/noiseLabel" style="@style/Label" />
+                    <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
+                    <TextView style="@style/Note" android:text="@string/noise_note" />
+
+                    <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
+                    <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
+
+                    <TextView style="@style/Label" android:text="@string/mic_gain" />
+                    <SeekBar android:id="@+id/seekGain" style="@style/Slider" android:max="250" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/onAir"
-                    style="@style/Body"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/transmitting"
-                    android:textColor="@color/danger"
-                    android:textStyle="bold"
-                    android:visibility="invisible" />
-
-                <TextView style="@style/Label" android:text="@string/mic_level" />
-
-                <ProgressBar
-                    android:id="@+id/micMeter"
-                    style="@android:style/Widget.ProgressBar.Horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="12dp"
-                    android:layout_marginTop="6dp"
-                    android:max="100"
-                    android:progressDrawable="@drawable/meter" />
-
-                <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
-
-                <TextView android:id="@+id/noiseLabel" style="@style/Label" />
-                <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
-                <TextView style="@style/Note" android:text="@string/noise_note" />
-
-                <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
-                <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
-
-                <TextView style="@style/Label" android:text="@string/mic_gain" />
-                <SeekBar android:id="@+id/seekGain" style="@style/Slider" android:max="250" />
 
                 <TextView style="@style/Label" android:text="@string/voice_volume" />
                 <SeekBar android:id="@+id/seekVoice" style="@style/Slider" android:max="200" />
@@ -194,7 +445,7 @@
             </LinearLayout>
 
             <!-- Music -->
-            <LinearLayout style="@style/Card">
+            <LinearLayout android:id="@+id/musicCard" style="@style/Card">
 
                 <TextView style="@style/CardTitle" android:text="@string/sec_music" />
 

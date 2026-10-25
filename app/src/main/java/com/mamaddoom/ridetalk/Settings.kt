@@ -96,6 +96,46 @@ class Settings(context: Context) {
         get() = p.getBoolean("shuffle", false)
         set(v) = p.edit().putBoolean("shuffle", v).apply()
 
+    // ------------------------------------------------------------- trip setup
+
+    /** What this phone does in a trip setup. */
+    enum class Role { NORMAL, MIC_ONLY, LISTEN_ONLY }
+
+    /** Where the voice comes from. */
+    enum class MicSource { HEADSET, WIRED, PHONE }
+
+    /**
+     * The gear the rider has, chosen on the setup card:
+     * 1 = phone + Bluetooth headset, 2 = + wired mic, 3 = two phones + two
+     * headsets (one ear each), 4 = phone mic + Bluetooth headset.
+     */
+    var setupPreset: Int
+        get() = p.getInt("preset", 1).coerceIn(1, 4)
+        set(v) = p.edit().putInt("preset", v).apply()
+
+    /** Preset 3 only: true if this is the microphone phone, false for the music phone. */
+    var twoPhoneMic: Boolean
+        get() = p.getBoolean("twoPhoneMic", false)
+        set(v) = p.edit().putBoolean("twoPhoneMic", v).apply()
+
+    val role: Role
+        get() = when {
+            setupPreset != 3 -> Role.NORMAL
+            twoPhoneMic -> Role.MIC_ONLY
+            else -> Role.LISTEN_ONLY
+        }
+
+    val micSource: MicSource
+        get() = when (setupPreset) {
+            2 -> MicSource.WIRED
+            4 -> MicSource.PHONE
+            else -> MicSource.HEADSET
+        }
+
+    /** One earbud in the ear: fold stereo into both channels so nothing is lost. */
+    val monoOutput: Boolean
+        get() = role == Role.LISTEN_ONLY
+
     /** Maps sensitivity 0..100 to a VOX threshold of -25..-55 dBFS. */
     fun voxThresholdDb(): Float = -25f - voxSensitivity * 0.3f
 }

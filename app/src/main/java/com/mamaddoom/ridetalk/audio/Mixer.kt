@@ -40,6 +40,8 @@ class Mixer(
     @Volatile var voiceVolume = 1f
     @Volatile var musicVolume = 0.6f
     @Volatile var duckingEnabled = true
+    /** One earbud only: fold stereo to mono on both channels so nothing is lost. */
+    @Volatile var mono = false
     /** Set by the engine while we are transmitting, so our own talking also ducks music. */
     @Volatile var localTalking = false
     /** Two-tone cues mixed into the output: mic ready, rider joined, rider left. */
@@ -214,6 +216,13 @@ class Mixer(
                     }
                 }
 
+                if (mono && channels == 2) {
+                    for (i in 0 until periodFrames) {
+                        val m = (mix[i * 2] + mix[i * 2 + 1]) * 0.5f
+                        mix[i * 2] = m
+                        mix[i * 2 + 1] = m
+                    }
+                }
                 for (i in mix.indices) out[i] = Pcm.toShort(mix[i])
                 var off = 0
                 while (off < out.size && running) {

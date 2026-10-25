@@ -40,6 +40,9 @@ object Protocol {
 
     const val FLAG_TALKING = 1
     const val FLAG_MUSIC = 2
+    /** Trip setup roles: a phone that only sends the mic / only plays. */
+    const val FLAG_MIC_ONLY = 4
+    const val FLAG_LISTEN_ONLY = 8
 
     const val MAX_PACKET = 1500
     private const val MAX_NAME = 40
