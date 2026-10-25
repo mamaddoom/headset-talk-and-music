@@ -122,6 +122,7 @@
                     </LinearLayout>
                 </LinearLayout>
 
+
                 <LinearLayout
                     android:id="@+id/preset2"
                     android:layout_width="match_parent"
@@ -165,91 +166,6 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:id="@+id/preset3"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:background="@drawable/button"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="72dp"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:layout_width="64dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="@string/preset3_icon"
-                        android:textSize="26sp" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/preset3_title"
-                            android:textColor="@color/text"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/preset3_desc"
-                            android:textColor="@color/text_dim"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/preset4"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:background="@drawable/button"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="72dp"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:layout_width="64dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="@string/preset4_icon"
-                        android:textSize="26sp" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/preset4_title"
-                            android:textColor="@color/text"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/preset4_desc"
-                            android:textColor="@color/text_dim"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-                </LinearLayout>
 
                 <!-- Two-phone setup: which phone is this? -->
                 <LinearLayout
@@ -405,6 +321,15 @@
                         android:progressDrawable="@drawable/meter" />
 
                     <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp">
+
+                        <Button android:id="@+id/btnMicTest" style="@style/BigButton" android:text="@string/mic_test" />
+                    </LinearLayout>
+                    <TextView style="@style/Note" android:text="@string/mic_test_note" />
 
                     <TextView android:id="@+id/noiseLabel" style="@style/Label" />
                     <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />

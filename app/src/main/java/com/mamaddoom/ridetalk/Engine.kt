@@ -39,8 +39,9 @@ class Engine(
         @Volatile var lastSeenMs = System.currentTimeMillis()
         @Volatile var musicTitle = ""
         @Volatile var musicPlaying = false
-        @Volatile var micOnly = false
-        @Volatile var listenOnly = false
+        /** Two-phone setup roles announced in the beacon. */
+        @Volatile var talkPhone = false
+        @Volatile var musicPhone = false
     }
 
     data class PeerInfo(
@@ -48,8 +49,8 @@ class Engine(
         val ip: String,
         val talking: Boolean,
         val quality: Int,
-        val micOnly: Boolean,
-        val listenOnly: Boolean,
+        val talkPhone: Boolean,
+        val musicPhone: Boolean,
         /** The other phone of this same rider (two-phone setup). */
         val mine: Boolean,
     )
@@ -95,10 +96,10 @@ class Engine(
         val leAudio: Boolean,
         // Trip setup checklist
         val role: Settings.Role,
-        val micSource: Settings.MicSource,
         val headsetConnected: Boolean,
-        val wiredMicFound: Boolean,
         val otherPhoneConnected: Boolean,
+        /** Seconds left in a mic test, 0 when none is running. */
+        val micTestLeftS: Int,
     )
 
     val settings = Settings(context)
@@ -154,8 +155,6 @@ class Engine(
         HIFI,
         /** Bluetooth call link with the headset mic. */
         CALL,
-        /** Headset on stereo Bluetooth + a wired/USB or the phone's own mic. */
-        LOCAL,
     }
     @Volatile private var audioMode = AudioMode.OFF
     /** Music-quality mode: the mic is open for one "talk session" at a time. */
@@ -166,6 +165,12 @@ class Engine(
     @Volatile private var talkEndPosted = false
     @Volatile private var lastPeerMs = 0L
     private var startedMs = 0L
+
+    /** Mic test: your own voice is played back to you for a few seconds. */
+    private val loopback = PeerAudio()
+    @Volatile var micTestUntilMs = 0L
+        private set
+    private var loopbackSeq = 0
 
     /** A join/leave cue that arrived while the mixer was not running yet (standby wake-up). */
     @Volatile private var queuedCue: Mixer.Cue? = null
@@ -252,12 +257,7 @@ class Engine(
         audioMode = want
         if (want != AudioMode.OFF) {
             val sco = want == AudioMode.CALL
-            val mic = when {
-                want != AudioMode.LOCAL -> AudioRouter.LocalMic.NONE
-                settings.micSource == Settings.MicSource.WIRED -> AudioRouter.LocalMic.WIRED
-                else -> AudioRouter.LocalMic.PHONE
-            }
-            router.start(sco, mic)
+            router.start(sco)
             // Give the SCO link time to come up before opening the mic, otherwise some
             // phones keep recording from the built-in microphone.
             ctl.postDelayed(openStreams, if (sco) 700L else 0L)
@@ -267,13 +267,12 @@ class Engine(
 
     private fun desiredAudioMode(): AudioMode {
         val needed = !settings.batterySaver || peers.isNotEmpty() || music.active || appCapture != null ||
-            talkSession || System.currentTimeMillis() - lastPeerMs < STANDBY_DELAY_MS
+            talkSession || micTesting || System.currentTimeMillis() - lastPeerMs < STANDBY_DELAY_MS
         val role = settings.role
         return when {
             !needed -> AudioMode.OFF
-            role == Settings.Role.LISTEN_ONLY -> AudioMode.HIFI
-            settings.micSource != Settings.MicSource.HEADSET -> AudioMode.LOCAL
-            role == Settings.Role.MIC_ONLY -> AudioMode.CALL
+            role == Settings.Role.MUSIC -> AudioMode.HIFI
+            role == Settings.Role.TALK -> AudioMode.CALL
             settings.headsetMic || talkSession -> AudioMode.CALL
             else -> AudioMode.HIFI
         }
@@ -292,26 +291,19 @@ class Engine(
         if (!running || audioMode == AudioMode.OFF) return
         closeStreams()
         val sco = audioMode == AudioMode.CALL
-        val local = audioMode == AudioMode.LOCAL
         val role = settings.role
-        // A mic-only phone plays nothing: its rider hears everything from the music phone.
-        val m = if (role == Settings.Role.MIC_ONLY) null else {
-            // Only a classic Bluetooth call link forces 16 kHz mono; LE Audio keeps full quality with the mic on.
-            Mixer(sco, !sco || !router.isNarrowband, router.outputDevice, peerAudios, musicBuffer).also {
-                applyMixerSettings(it)
-                it.start()
-            }
+        // Only a classic Bluetooth call link forces 16 kHz mono; LE Audio keeps full quality with the mic on.
+        val m = Mixer(sco, !sco || !router.isNarrowband, router.outputDevice, peerAudios, musicBuffer).also {
+            applyMixerSettings(it)
+            it.start()
         }
         mixer = m
         queuedCue?.let {
-            if (m != null && System.currentTimeMillis() - queuedCueAtMs < 3000) m.cue(it)
+            if (System.currentTimeMillis() - queuedCueAtMs < 3000) m.cue(it)
             queuedCue = null
         }
-        if ((sco || local) && role != Settings.Role.LISTEN_ONLY && Permissions.hasMic(context)) {
-            val source = if (local) android.media.MediaRecorder.AudioSource.MIC
-            else android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
-            // No wired mic found: fall back to the phone mic rather than going silent.
-            capture = VoiceCapture(router.inputDevice, this, source).also {
+        if (sco && role != Settings.Role.MUSIC && Permissions.hasMic(context)) {
+            capture = VoiceCapture(router.inputDevice, this).also {
                 applyCaptureSettings(it)
                 if (talkSession) {
                     // Tap-to-talk: voice-activated, held open briefly so the first words get through.
@@ -320,7 +312,7 @@ class Engine(
                     it.holdOpenFrames = TALK_HOLD_FRAMES
                     talkStartedMs = System.currentTimeMillis()
                     lastSpeechMs = talkStartedMs
-                    m?.cue(Mixer.Cue.READY)
+                    m.cue(Mixer.Cue.READY)
                 }
                 it.start()
             }
@@ -372,7 +364,7 @@ class Engine(
      */
     fun headsetButton() {
         when {
-            settings.role == Settings.Role.LISTEN_ONLY -> toggleMusic() // music phone: play/pause
+            settings.role == Settings.Role.MUSIC -> toggleMusic() // music phone: play/pause
             tapToTalk -> toggleTalk()
             settings.ptt -> setPtt(!pttPressed)
             else -> setMuted(!muted)
@@ -382,8 +374,7 @@ class Engine(
     /** Music-quality mode: opens the headset mic until you stop talking (or tap again). */
     /** Music-quality mode with the headset mic: the only setup where talking needs a tap. */
     val tapToTalk: Boolean
-        get() = !settings.headsetMic && settings.role == Settings.Role.NORMAL &&
-            settings.micSource == Settings.MicSource.HEADSET
+        get() = !settings.headsetMic && settings.role == Settings.Role.NORMAL
 
     fun toggleTalk() = onCtl {
         if (!running || !tapToTalk) return@onCtl
@@ -447,9 +438,9 @@ class Engine(
     }
 
     /** Applies a trip setup chosen on the setup card and rebuilds the audio path. */
-    fun setSetup(preset: Int, twoPhoneMic: Boolean) {
-        settings.setupPreset = preset
-        settings.twoPhoneMic = twoPhoneMic
+    fun setSetup(twoPhones: Boolean, talkPhone: Boolean) {
+        settings.twoPhones = twoPhones
+        settings.isTalkPhone = talkPhone
         onCtl {
             talkSession = false
             stopAudio()
@@ -458,12 +449,17 @@ class Engine(
         }
     }
 
-    /** Same rider name and a complementary role: the other phone of a two-phone setup. */
+    /**
+     * Same rider name and the complementary role: the other phone of a
+     * two-phone setup. Only used for the checklist and the peer list; audio
+     * never depends on it (the music phone plays no voices at all, and no
+     * phone ever plays its own mic), so a name typo can't cause an echo.
+     */
     private fun isMyOtherPhone(p: Peer): Boolean {
         val role = settings.role
         if (role == Settings.Role.NORMAL) return false
         if (!p.name.trim().equals(settings.name.trim(), ignoreCase = true)) return false
-        return if (role == Settings.Role.LISTEN_ONLY) p.micOnly else p.listenOnly
+        return if (role == Settings.Role.MUSIC) p.talkPhone else p.musicPhone
     }
 
     fun setBatterySaver(enabled: Boolean) {
@@ -532,7 +528,7 @@ class Engine(
         c.muted = muted && !talkSession
         c.pttPressed = pttPressed
         c.noiseReduction = settings.noiseReduction
-        c.antiFeedback = settings.antiFeedback
+        c.antiFeedback = settings.antiFeedback && !micTesting
     }
 
     private fun applyMixerSettings(m: Mixer) {
@@ -567,8 +563,8 @@ class Engine(
         val appSignal = appCapture?.hasSignal == true
         if (music.playing || appSignal) flags = flags or Protocol.FLAG_MUSIC
         when (settings.role) {
-            Settings.Role.MIC_ONLY -> flags = flags or Protocol.FLAG_MIC_ONLY
-            Settings.Role.LISTEN_ONLY -> flags = flags or Protocol.FLAG_LISTEN_ONLY
+            Settings.Role.TALK -> flags = flags or Protocol.FLAG_TALK_PHONE
+            Settings.Role.MUSIC -> flags = flags or Protocol.FLAG_MUSIC_PHONE
             Settings.Role.NORMAL -> Unit
         }
         val title = when {
@@ -612,7 +608,33 @@ class Engine(
     private fun updatePeerAddresses() {
         val list = peers.values.toList()
         transport.peerAddresses = list.map { it.address }
-        peerAudioList = list.map { it.audio }
+        val audios = list.map { it.audio }
+        peerAudioList = if (micTesting) audios + loopback else audios
+    }
+
+    private val micTesting get() = System.currentTimeMillis() < micTestUntilMs
+
+    /**
+     * Plays your own mic back to you for [MIC_TEST_MS], on this phone only, so
+     * you can check the mic when nobody else is connected. Wakes the audio path.
+     */
+    fun startMicTest() = onCtl {
+        if (!running || settings.role == Settings.Role.MUSIC) return@onCtl
+        micTestUntilMs = System.currentTimeMillis() + MIC_TEST_MS
+        loopback.voice.clear()
+        loopback.decoder.reset()
+        capture?.antiFeedback = false // we *want* to hear ourselves now
+        updatePeerAddresses()
+        if (tapToTalk && !talkSession) startTalk() else reconcileAudio()
+        ctl.postDelayed(endMicTest, MIC_TEST_MS)
+        notifyState()
+    }
+
+    private val endMicTest = Runnable {
+        micTestUntilMs = 0
+        capture?.let { applyCaptureSettings(it) }
+        updatePeerAddresses()
+        notifyState()
     }
 
     // ---------------------------------------------------------------- network in
@@ -629,18 +651,23 @@ class Engine(
         val peer = touchPeer(header.sender, from)
         when (header.type) {
             Protocol.TYPE_VOICE -> {
-                // Two-phone setup: don't play our own voice back from our mic phone.
-                if (!isMyOtherPhone(peer)) Protocol.decodeBytes(payload)?.let { peer.audio.voice.put(header.seq, it) }
+                if (settings.role == Settings.Role.MUSIC) {
+                    // Music phone: voices play on the talk phone; here they only duck the music.
+                    mixer?.voiceElsewhereAtMs = System.currentTimeMillis()
+                } else {
+                    Protocol.decodeBytes(payload)?.let { peer.audio.voice.put(header.seq, it) }
+                }
             }
-            Protocol.TYPE_MUSIC -> Protocol.decodePcm(payload, Protocol.MUSIC_SAMPLES)?.let {
-                acceptMusic(header.sender, header.seq, it)
+            Protocol.TYPE_MUSIC -> if (settings.role != Settings.Role.TALK) {
+                // The talk phone never plays music; the music phone does.
+                Protocol.decodePcm(payload, Protocol.MUSIC_SAMPLES)?.let { acceptMusic(header.sender, header.seq, it) }
             }
             Protocol.TYPE_BEACON -> Protocol.decodeBeacon(payload)?.let {
                 peer.name = it.name
                 peer.musicTitle = it.title
                 peer.musicPlaying = it.flags and Protocol.FLAG_MUSIC != 0
-                peer.micOnly = it.flags and Protocol.FLAG_MIC_ONLY != 0
-                peer.listenOnly = it.flags and Protocol.FLAG_LISTEN_ONLY != 0
+                peer.talkPhone = it.flags and Protocol.FLAG_TALK_PHONE != 0
+                peer.musicPhone = it.flags and Protocol.FLAG_MUSIC_PHONE != 0
             }
         }
     }
@@ -698,6 +725,7 @@ class Engine(
         if (n <= 0) return
         val len = Protocol.encodeBytes(voiceBuf, Protocol.TYPE_VOICE, myId, voiceSeq++, opusOut, n)
         transport.sendToPeers(voiceBuf.array(), len)
+        if (micTesting) loopback.voice.put(loopbackSeq++, opusOut.copyOf(n))
     }
 
     override fun onMicLevel(levelDb: Float, transmitting: Boolean) {
@@ -790,8 +818,8 @@ class Engine(
                     ip = it.address.address.hostAddress.orEmpty(),
                     talking = now - it.audio.lastVoiceAtMs < 400,
                     quality = (it.audio.voice.quality() * 100).toInt(),
-                    micOnly = it.micOnly,
-                    listenOnly = it.listenOnly,
+                    talkPhone = it.talkPhone,
+                    musicPhone = it.musicPhone,
                     mine = isMyOtherPhone(it),
                 )
             }.sortedBy { it.name },
@@ -824,14 +852,12 @@ class Engine(
             hifi = tapToTalk,
             talkSession = talkSession,
             talkReady = talkSession && capture != null && audioMode == AudioMode.CALL,
-            linkHighQuality = audioMode == AudioMode.HIFI || audioMode == AudioMode.LOCAL ||
-                (audioMode == AudioMode.CALL && !router.isNarrowband),
+            linkHighQuality = audioMode == AudioMode.HIFI || (audioMode == AudioMode.CALL && !router.isNarrowband),
             leAudio = audioMode != AudioMode.OFF && router.isLeAudio,
             role = settings.role,
-            micSource = settings.micSource,
             headsetConnected = router.bluetoothHeadsetPresent(),
-            wiredMicFound = router.wiredMicPresent(),
             otherPhoneConnected = peers.values.any { isMyOtherPhone(it) },
+            micTestLeftS = ((micTestUntilMs - now + 999) / 1000).toInt().coerceAtLeast(0),
         )
     }
 
@@ -847,6 +873,7 @@ class Engine(
         const val STANDBY_DELAY_MS = 20_000L
         const val AUTO_STOP_MS = 30 * 60_000L
         const val TALK_HOLD_FRAMES = 150 // 3 s
+        const val MIC_TEST_MS = 6000L
         const val TALK_IDLE_MS = 2500L
         const val TALK_MIN_MS = 4000L
     }

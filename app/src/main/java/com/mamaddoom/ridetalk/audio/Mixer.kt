@@ -40,6 +40,11 @@ class Mixer(
     @Volatile var voiceVolume = 1f
     @Volatile var musicVolume = 0.6f
     @Volatile var duckingEnabled = true
+    /**
+     * Music phone of a two-phone setup: voices are not played here, but the
+     * engine stamps this when someone talks so the music still ducks.
+     */
+    @Volatile var voiceElsewhereAtMs = 0L
     /** One earbud only: fold stereo to mono on both channels so nothing is lost. */
     @Volatile var mono = false
     /** Set by the engine while we are transmitting, so our own talking also ducks music. */
@@ -138,7 +143,7 @@ class Mixer(
             while (running) {
                 mix.fill(0f)
                 val now = System.currentTimeMillis()
-                var anyTalking = localTalking
+                var anyTalking = localTalking || now - voiceElsewhereAtMs < 400
                 var remote = false
 
                 // --- voice from every peer ---

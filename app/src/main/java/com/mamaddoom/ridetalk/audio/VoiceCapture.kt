@@ -20,12 +20,6 @@ import com.mamaddoom.ridetalk.net.Protocol
 class VoiceCapture(
     private val preferredInput: AudioDeviceInfo?,
     private val sink: Sink,
-    /**
-     * VOICE_COMMUNICATION for the headset mic (call link). A wired or phone
-     * mic beside a stereo headset uses plain MIC: a "communication" source
-     * could pull the headset into call mode.
-     */
-    private val source: Int = MediaRecorder.AudioSource.VOICE_COMMUNICATION,
 ) {
     interface Sink {
         /** Called on the capture thread for every frame that should be sent. */
@@ -83,7 +77,7 @@ class VoiceCapture(
         )
         val record = try {
             AudioRecord(
-                source,
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
                 Protocol.VOICE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,

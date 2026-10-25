@@ -193,7 +193,7 @@ class IntercomService : Service() {
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-        if (st?.role == Settings.Role.LISTEN_ONLY) {
+        if (st?.role == Settings.Role.MUSIC) {
             // Music phone of a two-phone setup: nothing to talk or mute here.
         } else if (st?.hifi != false) {
             b.addAction(action(ACTION_PTT, if (st?.talkSession == true) R.string.ptt_release else R.string.ptt_talk))

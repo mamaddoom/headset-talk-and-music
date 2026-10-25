@@ -98,43 +98,33 @@ class Settings(context: Context) {
 
     // ------------------------------------------------------------- trip setup
 
-    /** What this phone does in a trip setup. */
-    enum class Role { NORMAL, MIC_ONLY, LISTEN_ONLY }
-
-    /** Where the voice comes from. */
-    enum class MicSource { HEADSET, WIRED, PHONE }
-
     /**
-     * The gear the rider has, chosen on the setup card:
-     * 1 = phone + Bluetooth headset, 2 = + wired mic, 3 = two phones + two
-     * headsets (one ear each), 4 = phone mic + Bluetooth headset.
+     * What this phone does. With two phones (one earbud from each headset):
+     * MUSIC plays only music in full stereo quality; TALK carries the
+     * intercom (headset mic + the other riders' voices) and never music.
      */
-    var setupPreset: Int
-        get() = p.getInt("preset", 1).coerceIn(1, 4)
-        set(v) = p.edit().putInt("preset", v).apply()
+    enum class Role { NORMAL, TALK, MUSIC }
 
-    /** Preset 3 only: true if this is the microphone phone, false for the music phone. */
-    var twoPhoneMic: Boolean
+    /** Two-phone setup chosen on the trip setup card (older "preset 3" means the same). */
+    var twoPhones: Boolean
+        get() = p.getBoolean("twoPhones", p.getInt("preset", 1) == 3)
+        set(v) = p.edit().putBoolean("twoPhones", v).apply()
+
+    /** Two-phone setup: true on the talk phone, false on the music phone. */
+    var isTalkPhone: Boolean
         get() = p.getBoolean("twoPhoneMic", false)
         set(v) = p.edit().putBoolean("twoPhoneMic", v).apply()
 
     val role: Role
         get() = when {
-            setupPreset != 3 -> Role.NORMAL
-            twoPhoneMic -> Role.MIC_ONLY
-            else -> Role.LISTEN_ONLY
-        }
-
-    val micSource: MicSource
-        get() = when (setupPreset) {
-            2 -> MicSource.WIRED
-            4 -> MicSource.PHONE
-            else -> MicSource.HEADSET
+            !twoPhones -> Role.NORMAL
+            isTalkPhone -> Role.TALK
+            else -> Role.MUSIC
         }
 
     /** One earbud in the ear: fold stereo into both channels so nothing is lost. */
     val monoOutput: Boolean
-        get() = role == Role.LISTEN_ONLY
+        get() = role == Role.MUSIC
 
     /** Maps sensitivity 0..100 to a VOX threshold of -25..-55 dBFS. */
     fun voxThresholdDb(): Float = -25f - voxSensitivity * 0.3f

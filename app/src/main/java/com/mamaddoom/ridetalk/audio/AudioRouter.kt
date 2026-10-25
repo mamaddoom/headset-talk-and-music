@@ -45,25 +45,15 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
     }
     private val reroute = Runnable {
         if (!active) return@Runnable
-        val before = outputDevice?.id to inputDevice?.id
+        val before = outputDevice?.id
         apply()
-        // Also restart when a wired mic is plugged in or pulled out.
-        if ((outputDevice?.id to inputDevice?.id) != before) onRouteChanged()
+        if (outputDevice?.id != before) onRouteChanged()
     }
     private var firstCallback = true
-    private var localMic: LocalMic = LocalMic.NONE
 
-    /** Mic used while the headset stays on stereo Bluetooth (not the headset's own mic). */
-    enum class LocalMic { NONE, WIRED, PHONE }
-
-    /**
-     * [sco] = Bluetooth call link with the headset mic. Otherwise the headset
-     * stays on stereo, and [mic] picks a wired/USB or the built-in mic, if any.
-     */
-    fun start(sco: Boolean, mic: LocalMic = LocalMic.NONE) {
+    fun start(sco: Boolean) {
         active = true
         useSco = sco
-        localMic = if (sco) LocalMic.NONE else mic
         firstCallback = true
         apply()
         am.registerAudioDeviceCallback(deviceCallback, main)
@@ -101,7 +91,7 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
             val a2dp = out.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
                 ?: out.firstOrNull { it.type == TYPE_BLE_HEADSET || it.type == TYPE_BLE_SPEAKER }
             outputDevice = a2dp
-            inputDevice = findLocalMic(localMic)
+            inputDevice = null
             routeName = a2dp?.let { context.getString(R.string.route_a2dp, it.productName) }
                 ?: context.getString(R.string.route_default)
             return
@@ -176,18 +166,6 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
         am.isSpeakerphoneOn = false
     }
 
-    private fun findLocalMic(kind: LocalMic): AudioDeviceInfo? {
-        val inputs = am.getDevices(AudioManager.GET_DEVICES_INPUTS)
-        return when (kind) {
-            LocalMic.NONE -> null
-            LocalMic.WIRED -> WIRED_MICS.firstNotNullOfOrNull { t -> inputs.firstOrNull { it.type == t } }
-            LocalMic.PHONE -> inputs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
-        }
-    }
-
-    /** A wired/USB microphone is plugged in (for the setup checklist). */
-    fun wiredMicPresent(): Boolean = findLocalMic(LocalMic.WIRED) != null
-
     /** A Bluetooth headset is connected at all (stereo or call link). */
     fun bluetoothHeadsetPresent(): Boolean = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
         it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
@@ -232,11 +210,6 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
         // Constant values so we can compile the list on any API level.
         const val TYPE_BLE_HEADSET = 26
         const val TYPE_BLE_SPEAKER = 27
-        val WIRED_MICS = listOf(
-            AudioDeviceInfo.TYPE_USB_HEADSET,
-            AudioDeviceInfo.TYPE_USB_DEVICE,
-            AudioDeviceInfo.TYPE_WIRED_HEADSET,
-        )
         val PRIORITY = listOf(
             TYPE_BLE_HEADSET,
             AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
