@@ -36,11 +36,9 @@
     <string name="vox_sensitivity">حساسیت تشخیص صدا</string>
     <string name="mic_gain">بلندی میکروفن</string>
     <string name="voice_volume">بلندی صدای همراه</string>
-    <string name="headset_mic">استفاده از میکروفن هندزفری (مکالمه)</string>
-    <string name="headset_mic_note">بلوتوث میکروفن هندزفری را فقط در حالت «تماس» (SCO) منتقل می‌کند که تک‌کاناله و ۱۶ کیلوهرتز است؛ پس وقتی روشن است کیفیت موزیک مثل صدای تماس تلفنی می‌شود. برای موزیک استریو با کیفیت کامل خاموشش کنید (صدای بقیه را می‌شنوید ولی خودتان صدا نمی‌فرستید).</string>
     <string name="route">مسیر صدا: %1$s</string>
     <string name="mic_unavailable">میکروفن در دسترس نیست. مجوز را بررسی کنید یا اگر تماس تلفنی دارید آن را تمام کنید.</string>
-    <string name="headset_button_note">دکمهٔ هندزفری: در حالت میکروفن باز قطع/وصل میکروفن، در حالت فشار برای صحبت شروع/پایان صحبت. بعضی هندزفری‌ها این دکمه را فقط برای تماس تلفنی می‌فرستند.</string>
+    <string name="headset_button_note">دکمهٔ هندزفری: در حالت کیفیت موزیک شروع/پایان صحبت؛ در حالت میکروفن همیشه باز، قطع/وصل میکروفن (یا شروع/پایان صحبت در حالت فشار برای صحبت). اگر دکمهٔ هندزفری شما کار نکرد، از دکمهٔ بالا یا دکمهٔ داخل اعلان استفاده کنید.</string>
 
     <string name="sec_music">موزیک مشترک</string>
     <string name="add_music">+ افزودن آهنگ</string>
@@ -87,4 +85,22 @@
     <string name="app_audio_waiting">منتظر… در برنامهٔ موزیک خود آهنگ را پخش کنید.</string>
     <string name="app_audio_failed">این گوشی اجازهٔ ضبط صدای برنامه‌ها را نمی‌دهد.</string>
     <string name="app_audio_unsupported">ارسال صدای برنامه‌ها به اندروید ۱۰ یا بالاتر نیاز دارد.</string>
+
+    <string name="mode_hifi">🎵 کیفیت موزیک</string>
+    <string name="mode_call">📞 میکروفن همیشه باز</string>
+    <string name="mode_hifi_note">موزیک و صدای همراه‌ها با کیفیت کامل استریو پخش می‌شود. برای صحبت، دکمهٔ بزرگ یا دکمهٔ هندزفری را بزنید: یک بوق کوتاه یعنی میکروفن آماده است، و وقتی صحبتتان تمام شد خودش به کیفیت کامل برمی‌گردد.</string>
+    <string name="mode_call_note">میکروفن هندزفری همیشه بدون دست زدن آماده است. بلوتوث میکروفن را فقط در حالت «تماس» (تک‌کاناله ۱۶ کیلوهرتز) منتقل می‌کند، پس کیفیت موزیک مثل صدای تماس تلفنی می‌شود.</string>
+    <string name="ptt_tap">برای صحبت بزنید</string>
+    <string name="talk_preparing">در حال باز کردن میکروفن…</string>
+    <string name="talk_live">● صحبت کنید · برای پایان بزنید</string>
+    <string name="noise_label">حذف نویز (باد و موتور): %1$s</string>
+    <string name="noise_off">خاموش</string>
+    <string name="noise_low">کم</string>
+    <string name="noise_medium">متوسط</string>
+    <string name="noise_high">قوی</string>
+    <string name="noise_max">حداکثر</string>
+    <string name="noise_note">هرچه قوی‌تر، صدای باد و موتور بیشتر حذف می‌شود؛ در حالت حداکثر ممکن است صدای شما کمی نازک‌تر شود.</string>
+    <string name="battery_saver">صرفه‌جویی باتری</string>
+    <string name="battery_saver_note">وقتی کسی وصل نیست و موزیکی پخش نمی‌شود، میکروفن و اتصال تماس بلوتوث خاموش می‌شوند و با وصل شدن یک نفر خودکار روشن می‌شوند. اگر ۳۰ دقیقه تنها باشید اینترکام خودش خاموش می‌شود.</string>
+    <string name="status_standby">در انتظار همراه · حالت کم‌مصرف</string>
 </resources>

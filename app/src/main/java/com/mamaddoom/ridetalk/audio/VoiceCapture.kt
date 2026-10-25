@@ -35,6 +35,10 @@ class VoiceCapture(
     @Volatile var pttPressed = false
     @Volatile var gain = 1f
     @Volatile var voxThresholdDb = -40f
+    /** Noise reduction 0..100: drives the spectral denoiser and the wind high-pass. */
+    @Volatile var noiseReduction = 60
+    /** Set >0 to force the VOX gate open for that many frames (tap-to-talk). */
+    @Volatile var holdOpenFrames = 0
 
     @Volatile private var running = false
     private var thread: Thread? = null
@@ -88,7 +92,9 @@ class VoiceCapture(
 
         val raw = ShortArray(frame)
         val f = FloatArray(frame)
-        val hpf = Biquad.highPass(Protocol.VOICE_RATE, 120.0) // wind rumble and engine drone
+        val denoiser = VoiceDenoiser()
+        var hpfStrength = -1
+        var hpf = Biquad.highPass(Protocol.VOICE_RATE, 120.0)
         val gate = VoxGate(hangoverFrames = 40) // 800 ms
         // Two frames of pre-roll so VOX doesn't chop the first syllable.
         val preRoll = arrayOf(ShortArray(frame), ShortArray(frame))
@@ -107,12 +113,26 @@ class VoiceCapture(
                 }
                 if (!running) break
 
+                val nr = noiseReduction
+                if (nr != hpfStrength) {
+                    // Wind rumble and engine drone: 100 Hz cut-off, up to 220 Hz at full strength.
+                    hpf = Biquad.highPass(Protocol.VOICE_RATE, 100.0 + nr * 1.2)
+                    hpfStrength = nr
+                    denoiser.strength = nr
+                }
                 val g = gain
-                for (i in 0 until frame) f[i] = hpf.process(raw[i] / 32768f) * g
+                for (i in 0 until frame) f[i] = hpf.process(raw[i] / 32768f)
+                denoiser.process(f, frame)
+                for (i in 0 until frame) f[i] *= g
                 val level = Pcm.rmsDb(f, frame)
                 val out = ShortArray(frame)
                 for (i in 0 until frame) out[i] = Pcm.toShort(f[i])
 
+                val hold = holdOpenFrames
+                if (hold > 0) {
+                    gate.hold(hold)
+                    holdOpenFrames = 0
+                }
                 val send = !muted && when (mode) {
                     Mode.PTT -> pttPressed
                     Mode.VOX -> gate.also { it.thresholdDb = voxThresholdDb }.update(level)

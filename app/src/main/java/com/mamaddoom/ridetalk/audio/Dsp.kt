@@ -130,6 +130,11 @@ class VoxGate(private val hangoverFrames: Int) {
         return false
     }
 
+    /** Keeps the gate open for at least [frames] more frames (e.g. right after tap-to-talk). */
+    fun hold(frames: Int) {
+        hang = maxOf(hang, frames)
+    }
+
     fun reset() {
         hang = 0
     }

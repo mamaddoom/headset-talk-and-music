@@ -49,6 +49,8 @@ class IntercomService : Service() {
     override fun onCreate() {
         super.onCreate()
         engine = Engine(applicationContext, ::onEngineState)
+        // Battery saver: switch off after a long time alone.
+        engine.onAutoStop = { Handler(mainLooper).post { if (engine.running) stopIntercom() } }
         createChannel()
     }
 
@@ -62,7 +64,7 @@ class IntercomService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_MUTE -> engine.setMuted(!engine.muted)
-            ACTION_PTT -> engine.setPtt(!engine.pttPressed)
+            ACTION_PTT -> engine.headsetButton()
             ACTION_APP_AUDIO -> startAppAudio(intent)
             ACTION_APP_AUDIO_STOP -> engine.stopAppAudio()
         }
@@ -178,6 +180,8 @@ class IntercomService : Service() {
         val st = if (::engine.isInitialized && engine.running) engine.state() else null
         val text = when {
             st == null -> getString(R.string.notif_starting)
+            st.talkSession -> getString(if (st.talkReady) R.string.talk_live else R.string.talk_preparing)
+            st.peers.isEmpty() && st.standby -> getString(R.string.status_standby)
             st.peers.isEmpty() -> getString(R.string.status_searching)
             else -> getString(R.string.notif_connected, st.peers.joinToString("، ") { it.name })
         }
@@ -189,7 +193,9 @@ class IntercomService : Service() {
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-        if (st?.ptt == true) {
+        if (st?.hifi != false) {
+            b.addAction(action(ACTION_PTT, if (st?.talkSession == true) R.string.ptt_release else R.string.ptt_talk))
+        } else if (st.ptt) {
             b.addAction(action(ACTION_PTT, if (st.pttPressed) R.string.ptt_release else R.string.ptt_talk))
         } else {
             b.addAction(action(ACTION_MUTE, if (st?.muted == true) R.string.unmute else R.string.mute))
@@ -217,7 +223,8 @@ class IntercomService : Service() {
         }
         val st = engine.state()
         // Only touch the notification when its visible content changes.
-        val key = "${st.peers.map { it.name }}|${st.muted}|${st.ptt}|${st.pttPressed}"
+        val key = "${st.peers.map { it.name }}|${st.muted}|${st.ptt}|${st.pttPressed}|${st.hifi}|" +
+            "${st.talkSession}|${st.talkReady}|${st.standby}"
         if (key != lastNotificationKey) {
             lastNotificationKey = key
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())

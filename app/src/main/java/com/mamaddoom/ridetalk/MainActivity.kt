@@ -55,7 +55,11 @@ class MainActivity : Activity() {
     private lateinit var micError: TextView
     private lateinit var voxLabel: TextView
     private lateinit var seekVox: SeekBar
-    private lateinit var swHeadsetMic: Switch
+    private lateinit var btnModeHifi: Button
+    private lateinit var btnModeCall: Button
+    private lateinit var modeNote: TextView
+    private lateinit var callControls: View
+    private lateinit var noiseLabel: TextView
     private lateinit var peers: TextView
     private lateinit var myIp: TextView
     private lateinit var musicTitle: TextView
@@ -159,7 +163,11 @@ class MainActivity : Activity() {
         micError = findViewById(R.id.micError)
         voxLabel = findViewById(R.id.voxLabel)
         seekVox = findViewById(R.id.seekVox)
-        swHeadsetMic = findViewById(R.id.swHeadsetMic)
+        btnModeHifi = findViewById(R.id.btnModeHifi)
+        btnModeCall = findViewById(R.id.btnModeCall)
+        modeNote = findViewById(R.id.modeNote)
+        callControls = findViewById(R.id.callControls)
+        noiseLabel = findViewById(R.id.noiseLabel)
         peers = findViewById(R.id.peers)
         myIp = findViewById(R.id.myIp)
         musicTitle = findViewById(R.id.musicTitle)
@@ -210,18 +218,47 @@ class MainActivity : Activity() {
         }
 
         btnPtt.setOnTouchListener { v, ev ->
+            val e = engine
+            if (!settings.headsetMic) {
+                // Music-quality mode: a tap starts or ends a talk session.
+                if (ev.actionMasked == MotionEvent.ACTION_UP) {
+                    if (e?.running == true) {
+                        e.toggleTalk()
+                        v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    } else {
+                        toast(R.string.start_first)
+                    }
+                }
+                return@setOnTouchListener true
+            }
+            // Call mode, push-to-talk: talk while held.
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    engine?.setPtt(true)
+                    e?.setPtt(true)
                     v.isActivated = true
                     v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    engine?.setPtt(false)
+                    e?.setPtt(false)
                     v.isActivated = false
                 }
             }
             true
+        }
+
+        btnModeHifi.setOnClickListener { setAudioMode(callMode = false) }
+        btnModeCall.setOnClickListener { setAudioMode(callMode = true) }
+        slider(R.id.seekNoise, settings.noiseReduction) {
+            settings.noiseReduction = it
+            renderNoiseLabel()
+        }
+        renderNoiseLabel()
+        findViewById<Switch>(R.id.swBatterySaver).apply {
+            isChecked = settings.batterySaver
+            setOnCheckedChangeListener { _, c ->
+                val e = engine
+                if (e != null) e.setBatterySaver(c) else settings.batterySaver = c
+            }
         }
 
         btnModeVox.setOnClickListener { setPttMode(false) }
@@ -238,13 +275,6 @@ class MainActivity : Activity() {
         }
         renderSyncLabel()
 
-        swHeadsetMic.isChecked = settings.headsetMic
-        swHeadsetMic.setOnCheckedChangeListener { _, checked ->
-            val e = engine
-            if (e != null) e.setHeadsetMic(checked) else settings.headsetMic = checked
-            updateVolumeStream()
-            render()
-        }
         updateVolumeStream()
 
         findViewById<Switch>(R.id.swDuck).apply {
@@ -356,6 +386,25 @@ class MainActivity : Activity() {
             false
         }
         else -> true
+    }
+
+    private fun setAudioMode(callMode: Boolean) {
+        val e = engine
+        if (e != null) e.setHeadsetMic(callMode) else settings.headsetMic = callMode
+        updateVolumeStream()
+        render()
+    }
+
+    private fun renderNoiseLabel() {
+        val v = settings.noiseReduction
+        val level = when {
+            v == 0 -> R.string.noise_off
+            v < 30 -> R.string.noise_low
+            v < 60 -> R.string.noise_medium
+            v < 90 -> R.string.noise_high
+            else -> R.string.noise_max
+        }
+        noiseLabel.text = getString(R.string.noise_label, getString(level))
     }
 
     private fun setPttMode(ptt: Boolean) {
@@ -500,6 +549,7 @@ class MainActivity : Activity() {
 
         status.text = when {
             st == null -> getString(R.string.status_off)
+            st.peers.isEmpty() && st.standby -> getString(R.string.status_standby)
             st.peers.isEmpty() -> getString(R.string.status_searching)
             else -> getString(R.string.status_connected, st.peers.size)
         }
@@ -520,13 +570,33 @@ class MainActivity : Activity() {
     }
 
     private fun renderTalk(st: Engine.State?) {
+        val hifi = !settings.headsetMic
+        btnModeHifi.isSelected = hifi
+        btnModeCall.isSelected = !hifi
+        modeNote.setText(if (hifi) R.string.mode_hifi_note else R.string.mode_call_note)
+        callControls.visibility = if (hifi) View.GONE else View.VISIBLE
+
         val ptt = st?.ptt ?: settings.ptt
         btnModeVox.isSelected = !ptt
         btnModePtt.isSelected = ptt
-        btnPtt.visibility = if (ptt) View.VISIBLE else View.GONE
-        btnPtt.isActivated = st?.pttPressed == true
-        voxLabel.visibility = if (ptt) View.GONE else View.VISIBLE
-        seekVox.visibility = if (ptt) View.GONE else View.VISIBLE
+        if (hifi) {
+            btnPtt.visibility = View.VISIBLE
+            btnPtt.isActivated = st?.talkReady == true
+            btnPtt.text = getString(
+                when {
+                    st?.talkReady == true -> R.string.talk_live
+                    st?.talkSession == true -> R.string.talk_preparing
+                    else -> R.string.ptt_tap
+                },
+            )
+        } else {
+            btnPtt.visibility = if (ptt) View.VISIBLE else View.GONE
+            btnPtt.isActivated = st?.pttPressed == true
+            btnPtt.setText(R.string.ptt_hold)
+        }
+        // VOX sensitivity also decides when a tap-to-talk session ends.
+        voxLabel.visibility = if (ptt && !hifi) View.GONE else View.VISIBLE
+        seekVox.visibility = voxLabel.visibility
         val muted = st?.muted == true
         btnMute.setText(if (muted) R.string.unmute else R.string.mute)
         btnMute.isSelected = muted
@@ -535,7 +605,6 @@ class MainActivity : Activity() {
         micMeter.progress = st?.let { ((it.micLevelDb + 60f) / 60f * 100f).toInt().coerceIn(0, 100) } ?: 0
         micError.visibility = if (st != null && !st.micOk) View.VISIBLE else View.GONE
         micError.setText(R.string.mic_unavailable)
-        if (swHeadsetMic.isChecked != settings.headsetMic) swHeadsetMic.isChecked = settings.headsetMic
     }
 
     private fun renderConnection(st: Engine.State?) {

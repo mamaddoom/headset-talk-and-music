@@ -36,11 +36,9 @@
     <string name="vox_sensitivity">Voice detection sensitivity</string>
     <string name="mic_gain">Mic gain</string>
     <string name="voice_volume">Voice volume</string>
-    <string name="headset_mic">Use headset microphone (talk)</string>
-    <string name="headset_mic_note">Bluetooth can carry the headset mic only in “call” mode (SCO), which is mono 16 kHz. While it is on, music sounds like a phone call. Turn it off for full-quality stereo music (you can still hear the others, but you won’t transmit).</string>
     <string name="route">Audio: %1$s</string>
     <string name="mic_unavailable">Microphone unavailable. Check the permission or end any phone call.</string>
-    <string name="headset_button_note">Headset button: mute/unmute (open mic) or talk/stop (push-to-talk). Some headsets send this button only to phone calls.</string>
+    <string name="headset_button_note">Headset button: in music-quality mode it starts/ends talking; in call mode it mutes (open mic) or talks (push-to-talk). If your headset button does not respond, use the button above or the one in the notification.</string>
 
     <string name="sec_music">Shared music</string>
     <string name="add_music">+ Add songs</string>
@@ -87,4 +85,22 @@
     <string name="app_audio_waiting">Waiting… start playing in your music app.</string>
     <string name="app_audio_failed">This phone does not allow capturing app audio.</string>
     <string name="app_audio_unsupported">Sharing app audio needs Android 10 or newer.</string>
+
+    <string name="mode_hifi">🎵 Music quality</string>
+    <string name="mode_call">📞 Mic always on</string>
+    <string name="mode_hifi_note">Music and voices play in full stereo quality. To talk, tap the big button or your headset button: a beep tells you the mic is live, and after you stop talking it switches back to full quality by itself.</string>
+    <string name="mode_call_note">The headset mic is always available, hands-free. Bluetooth only carries the mic in “call” mode (mono 16 kHz), so music sounds like a phone call.</string>
+    <string name="ptt_tap">TAP TO TALK</string>
+    <string name="talk_preparing">Opening mic…</string>
+    <string name="talk_live">● Talk now · tap to finish</string>
+    <string name="noise_label">Noise reduction (wind, engine): %1$s</string>
+    <string name="noise_off">off</string>
+    <string name="noise_low">low</string>
+    <string name="noise_medium">medium</string>
+    <string name="noise_high">strong</string>
+    <string name="noise_max">maximum</string>
+    <string name="noise_note">Stronger settings remove more wind and engine noise; at maximum your voice may sound a bit thinner.</string>
+    <string name="battery_saver">Battery saver</string>
+    <string name="battery_saver_note">While nobody is connected and nothing is playing, the mic and Bluetooth call link are switched off; they come back automatically when someone connects. After 30 minutes alone the intercom turns itself off.</string>
+    <string name="status_standby">Waiting for riders · power saving</string>
 </resources>

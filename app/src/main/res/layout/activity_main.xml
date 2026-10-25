@@ -54,6 +54,17 @@
 
             <TextView style="@style/CardTitle" android:text="@string/sec_talk" />
 
+            <!-- Audio mode: music quality (tap to talk) or call mode (mic always on) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_hifi" />
+                <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_call" />
+            </LinearLayout>
+
+            <TextView android:id="@+id/modeNote" style="@style/Note" android:layout_marginBottom="8dp" />
+
             <Button
                 android:id="@+id/btnPtt"
                 android:layout_width="match_parent"
@@ -68,28 +79,35 @@
                 android:textStyle="bold" />
 
             <LinearLayout
+                android:id="@+id/callControls"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
-                <Button
-                    android:id="@+id/btnModeVox"
-                    style="@style/BigButton"
-                    android:text="@string/mode_vox" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
 
-                <Button
-                    android:id="@+id/btnModePtt"
-                    style="@style/BigButton"
-                    android:text="@string/mode_ptt" />
-            </LinearLayout>
+                    <Button
+                        android:id="@+id/btnModeVox"
+                        style="@style/BigButton"
+                        android:text="@string/mode_vox" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                    <Button
+                        android:id="@+id/btnModePtt"
+                        style="@style/BigButton"
+                        android:text="@string/mode_ptt" />
+                </LinearLayout>
 
-                <Button
-                    android:id="@+id/btnMute"
-                    style="@style/BigButton"
-                    android:text="@string/mute" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <Button
+                        android:id="@+id/btnMute"
+                        style="@style/BigButton"
+                        android:text="@string/mute" />
+                </LinearLayout>
             </LinearLayout>
 
             <TextView
@@ -114,6 +132,10 @@
 
             <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
 
+            <TextView android:id="@+id/noiseLabel" style="@style/Label" />
+            <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
+            <TextView style="@style/Note" android:text="@string/noise_note" />
+
             <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
             <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
 
@@ -123,12 +145,6 @@
             <TextView style="@style/Label" android:text="@string/voice_volume" />
             <SeekBar android:id="@+id/seekVoice" style="@style/Slider" android:max="200" />
 
-            <Switch
-                android:id="@+id/swHeadsetMic"
-                style="@style/BigSwitch"
-                android:text="@string/headset_mic" />
-
-            <TextView style="@style/Note" android:text="@string/headset_mic_note" />
             <TextView style="@style/Note" android:text="@string/headset_button_note" />
         </LinearLayout>
 
@@ -291,6 +307,9 @@
                 <Button android:id="@+id/btnBattery" style="@style/BigButton" android:textSize="15sp" android:text="@string/battery_opt" />
                 <Button android:id="@+id/btnAppSettings" style="@style/BigButton" android:textSize="15sp" android:text="@string/app_settings" />
             </LinearLayout>
+
+            <Switch android:id="@+id/swBatterySaver" style="@style/BigSwitch" android:text="@string/battery_saver" />
+            <TextView style="@style/Note" android:text="@string/battery_saver_note" />
 
             <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/guide" />
         </LinearLayout>

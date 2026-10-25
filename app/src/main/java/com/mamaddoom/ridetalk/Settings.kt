@@ -41,10 +41,23 @@ class Settings(context: Context) {
         get() = p.getBoolean("duck", true)
         set(v) = p.edit().putBoolean("duck", v).apply()
 
-    /** true = headset mic over SCO (talk + music), false = A2DP music-only, listen-only. */
+    /**
+     * true = call mode: headset mic always open over SCO (music at call quality).
+     * false = music-quality mode: A2DP stereo, the mic opens on tap (default).
+     */
     var headsetMic: Boolean
-        get() = p.getBoolean("sco", true)
+        get() = p.getBoolean("sco", false)
         set(v) = p.edit().putBoolean("sco", v).apply()
+
+    /** Noise reduction strength 0..100. */
+    var noiseReduction: Int
+        get() = p.getInt("nr", 60)
+        set(v) = p.edit().putInt("nr", v).apply()
+
+    /** Standby while alone, auto-off after 30 minutes alone. */
+    var batterySaver: Boolean
+        get() = p.getBoolean("batterySaver", true)
+        set(v) = p.edit().putBoolean("batterySaver", v).apply()
 
     /** Extra music delay on this phone (0..400 ms) to line up two different headsets. */
     var syncDelayMs: Int

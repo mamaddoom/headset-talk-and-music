@@ -36,6 +36,8 @@ class Mixer(
     @Volatile var duckingEnabled = true
     /** Set by the engine while we are transmitting, so our own talking also ducks music. */
     @Volatile var localTalking = false
+    /** Plays a short two-tone "mic is live" cue at the next period. */
+    @Volatile var beepPending = false
 
     @Volatile private var running = false
     private var thread: Thread? = null
@@ -98,6 +100,8 @@ class Mixer(
         var duckGain = 1f
         val duckAttack = 1f - Math.exp(-1.0 / (0.03 * outRate)).toFloat()
         val duckRelease = 1f - Math.exp(-1.0 / (0.6 * outRate)).toFloat()
+        var beepLeft = 0
+        var beepPhase = 0.0
 
         try {
             track.play()
@@ -153,6 +157,25 @@ class Mixer(
                                 (if (duckTarget < duckGain) duckAttack else duckRelease)
                             mix[base + i] += y * mv * duckGain
                         }
+                    }
+                }
+
+                if (beepPending) {
+                    beepPending = false
+                    beepLeft = outRate * 18 / 100 // 180 ms
+                }
+                if (beepLeft > 0) {
+                    val total = outRate * 18 / 100
+                    for (f in 0 until periodFrames) {
+                        if (beepLeft <= 0) break
+                        val t = total - beepLeft
+                        val freq = if (t < total / 2) 880.0 else 1320.0
+                        beepPhase += 2 * Math.PI * freq / outRate
+                        // 10 ms fade in/out avoids clicks.
+                        val env = minOf(1f, minOf(t, beepLeft) / (outRate / 100f))
+                        val v = (Math.sin(beepPhase) * 0.25 * env).toFloat()
+                        for (c in 0 until channels) mix[f * channels + c] += v
+                        beepLeft--
                     }
                 }
 

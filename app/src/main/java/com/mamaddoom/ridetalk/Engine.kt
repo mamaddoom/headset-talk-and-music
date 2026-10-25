@@ -71,6 +71,13 @@ class Engine(
         val appAudio: Boolean,
         val appAudioSignal: Boolean,
         val appAudioFailed: Boolean,
+        /** Battery saver: audio is off until someone connects. */
+        val standby: Boolean,
+        /** Music-quality mode: headset stays on A2DP, the mic opens on tap. */
+        val hifi: Boolean,
+        val talkSession: Boolean,
+        /** The mic is live in the current talk session. */
+        val talkReady: Boolean,
     )
 
     val settings = Settings(context)
@@ -119,6 +126,21 @@ class Engine(
     @Volatile private var micLevel = -120f
     @Volatile private var myIps: List<String> = emptyList()
 
+    /** What the audio path is currently set up for. Only touched on the control thread. */
+    private enum class AudioMode { OFF, HIFI, CALL }
+    @Volatile private var audioMode = AudioMode.OFF
+    /** Music-quality mode: the mic is open for one "talk session" at a time. */
+    @Volatile var talkSession = false
+        private set
+    @Volatile private var talkStartedMs = 0L
+    @Volatile private var lastSpeechMs = 0L
+    @Volatile private var talkEndPosted = false
+    @Volatile private var lastPeerMs = 0L
+    private var startedMs = 0L
+
+    /** Called (on the control thread) when battery saver decides to switch the intercom off. */
+    @Volatile var onAutoStop: (() -> Unit)? = null
+
     // ---------------------------------------------------------------- lifecycle
 
     // All audio/network lifecycle runs on the control thread so start, stop and
@@ -127,8 +149,10 @@ class Engine(
     fun start() = onCtl {
         if (running) return@onCtl
         running = true
+        startedMs = System.currentTimeMillis()
+        lastPeerMs = 0
         transport.start()
-        startAudio()
+        reconcileAudio()
         ctl.post(tick)
         notifyState()
     }
@@ -140,6 +164,7 @@ class Engine(
             if (!running) return@onCtlBlocking
             running = false
             ctl.removeCallbacksAndMessages(null)
+            talkSession = false
             stopAudio()
             transport.stop()
             peers.clear()
@@ -174,27 +199,73 @@ class Engine(
         ctlThread.quitSafely()
     }
 
-    private fun startAudio() {
-        val sco = settings.headsetMic
-        router.start(sco)
-        // Give the SCO link time to come up before opening the mic, otherwise some
-        // phones keep recording from the built-in microphone.
-        ctl.postDelayed(openStreams, if (sco) 700L else 0L)
+    /**
+     * Brings the audio path in line with what is needed right now. Runs on the
+     * control thread after anything that could change the answer.
+     *
+     * - OFF (battery saver): nobody connected and nothing playing; no mic, no
+     *   Bluetooth call link, no audio threads.
+     * - HIFI: headset on A2DP stereo; we hear voice and music in full quality.
+     * - CALL: Bluetooth SCO with the headset mic (always in call mode, or
+     *   during a tap-to-talk session in music-quality mode).
+     */
+    private fun reconcileAudio() {
+        if (!running) return
+        val want = desiredAudioMode()
+        if (want == audioMode) return
+        closeStreams()
+        if (audioMode != AudioMode.OFF) router.stop()
+        audioMode = want
+        if (want != AudioMode.OFF) {
+            val sco = want == AudioMode.CALL
+            router.start(sco)
+            // Give the SCO link time to come up before opening the mic, otherwise some
+            // phones keep recording from the built-in microphone.
+            ctl.postDelayed(openStreams, if (sco) 700L else 0L)
+        }
+        notifyState()
+    }
+
+    private fun desiredAudioMode(): AudioMode {
+        val needed = !settings.batterySaver || peers.isNotEmpty() || music.active || appCapture != null ||
+            talkSession || System.currentTimeMillis() - lastPeerMs < STANDBY_DELAY_MS
+        return when {
+            !needed -> AudioMode.OFF
+            settings.headsetMic || talkSession -> AudioMode.CALL
+            else -> AudioMode.HIFI
+        }
+    }
+
+    private val reconcile = Runnable { reconcileAudio() }
+
+    private fun reconcileSoon() {
+        ctl.removeCallbacks(reconcile)
+        ctl.post(reconcile)
     }
 
     private val openStreams = Runnable { openStreamsNow() }
 
     private fun openStreamsNow() {
-        if (!running) return
+        if (!running || audioMode == AudioMode.OFF) return
         closeStreams()
-        val sco = settings.headsetMic
-        mixer = Mixer(sco, router.outputDevice, peerAudios, musicBuffer).also {
+        val sco = audioMode == AudioMode.CALL
+        val m = Mixer(sco, router.outputDevice, peerAudios, musicBuffer).also {
             applyMixerSettings(it)
             it.start()
         }
+        mixer = m
         if (sco && Permissions.hasMic(context)) {
             capture = VoiceCapture(router.inputDevice, this).also {
                 applyCaptureSettings(it)
+                if (talkSession) {
+                    // Tap-to-talk: voice-activated, held open briefly so the first words get through.
+                    it.mode = VoiceCapture.Mode.VOX
+                    it.muted = false
+                    it.holdOpenFrames = TALK_HOLD_FRAMES
+                    talkStartedMs = System.currentTimeMillis()
+                    lastSpeechMs = talkStartedMs
+                    m.beepPending = true
+                }
                 it.start()
             }
         }
@@ -212,16 +283,16 @@ class Engine(
     private fun stopAudio() {
         ctl.removeCallbacks(openStreams)
         closeStreams()
-        router.stop()
+        if (audioMode != AudioMode.OFF) router.stop()
+        audioMode = AudioMode.OFF
     }
 
-    /** Headset connected/disconnected or mode switched: rebuild the audio path. */
+    /** Headset connected/disconnected: rebuild the audio path from scratch. */
     private fun restartAudioSoon() {
         if (!running) return
         ctl.post {
-            closeStreams()
-            router.stop()
-            startAudio()
+            stopAudio()
+            reconcileAudio()
         }
     }
 
@@ -239,9 +310,38 @@ class Engine(
         notifyState()
     }
 
-    /** Headset button / notification: toggles talk in PTT mode, mute in VOX mode. */
+    /**
+     * Headset button / notification. Music-quality mode: start or end a talk
+     * session. Call mode: toggles talk in push-to-talk, mute in open-mic.
+     */
     fun headsetButton() {
-        if (settings.ptt) setPtt(!pttPressed) else setMuted(!muted)
+        when {
+            !settings.headsetMic -> toggleTalk()
+            settings.ptt -> setPtt(!pttPressed)
+            else -> setMuted(!muted)
+        }
+    }
+
+    /** Music-quality mode: opens the headset mic until you stop talking (or tap again). */
+    fun toggleTalk() = onCtl {
+        if (!running || settings.headsetMic) return@onCtl
+        if (talkSession) endTalk() else if (Permissions.hasMic(context)) startTalk()
+    }
+
+    private fun startTalk() {
+        talkSession = true
+        talkEndPosted = false
+        talkStartedMs = System.currentTimeMillis()
+        lastSpeechMs = talkStartedMs
+        reconcileAudio()
+        notifyState()
+    }
+
+    private fun endTalk() {
+        talkSession = false
+        talkEndPosted = false
+        reconcileAudio()
+        notifyState()
     }
 
     fun setPttMode(ptt: Boolean) {
@@ -253,7 +353,15 @@ class Engine(
     fun setHeadsetMic(enabled: Boolean) {
         if (settings.headsetMic == enabled) return
         settings.headsetMic = enabled
-        restartAudioSoon()
+        onCtl {
+            talkSession = false
+            reconcileAudio()
+        }
+    }
+
+    fun setBatterySaver(enabled: Boolean) {
+        settings.batterySaver = enabled
+        reconcileSoon()
     }
 
     fun applySettings() {
@@ -287,6 +395,7 @@ class Engine(
         }
         projection = p
         appCapture = AppAudioCapture(p) { sendMusic(it, playLocally = false) }.also { it.start() }
+        reconcileSoon()
         notifyState()
     }
 
@@ -309,11 +418,13 @@ class Engine(
         musicSource != 0 && musicSource != myId && System.currentTimeMillis() - musicSourceAtMs < 1500
 
     private fun applyCaptureSettings(c: VoiceCapture) {
-        c.mode = if (settings.ptt) VoiceCapture.Mode.PTT else VoiceCapture.Mode.VOX
+        // A tap-to-talk session is always voice-activated and never muted.
+        c.mode = if (settings.ptt && !talkSession) VoiceCapture.Mode.PTT else VoiceCapture.Mode.VOX
         c.voxThresholdDb = settings.voxThresholdDb()
         c.gain = settings.micGain / 100f
-        c.muted = muted
+        c.muted = muted && !talkSession
         c.pttPressed = pttPressed
+        c.noiseReduction = settings.noiseReduction
     }
 
     private fun applyMixerSettings(m: Mixer) {
@@ -333,6 +444,9 @@ class Engine(
             sendBeacon()
             prunePeers()
             myIps = Transport.localAddresses()
+            checkTalkTimeout()
+            reconcileAudio()
+            checkAutoStop()
             notifyState()
             ctl.postDelayed(this, 1000)
         }
@@ -352,8 +466,23 @@ class Engine(
         transport.sendBeacon(beaconBuf.array(), len)
     }
 
+    /** Ends a talk session whose mic never delivered audio (capture failed or no permission). */
+    private fun checkTalkTimeout() {
+        if (!talkSession) return
+        val now = System.currentTimeMillis()
+        if (now - lastSpeechMs > TALK_IDLE_MS + 1000 && now - talkStartedMs > TALK_MIN_MS + 1000) endTalk()
+    }
+
+    /** Battery saver: switch off after a long time alone with nothing playing. */
+    private fun checkAutoStop() {
+        if (!settings.batterySaver || peers.isNotEmpty() || music.active || appCapture != null) return
+        val now = System.currentTimeMillis()
+        if (now - maxOf(lastPeerMs, startedMs) > AUTO_STOP_MS) onAutoStop?.invoke()
+    }
+
     private fun prunePeers() {
         val now = System.currentTimeMillis()
+        if (peers.isNotEmpty()) lastPeerMs = now
         var changed = false
         for (p in peers.values) {
             if (now - p.lastSeenMs > PEER_TIMEOUT_MS) {
@@ -408,7 +537,9 @@ class Engine(
         }
         val p = Peer(id, from)
         peers[id] = p
+        lastPeerMs = now
         updatePeerAddresses()
+        reconcileSoon() // wake from battery-saver standby
         // Answer right away so the other side learns about us without waiting a second.
         ctl.post(::sendBeacon)
         notifyState()
@@ -449,6 +580,16 @@ class Engine(
 
     override fun onMicLevel(levelDb: Float, transmitting: Boolean) {
         micLevel = levelDb
+        if (talkSession) {
+            val now = System.currentTimeMillis()
+            if (transmitting) {
+                lastSpeechMs = now
+            } else if (!talkEndPosted && now - lastSpeechMs > TALK_IDLE_MS && now - talkStartedMs > TALK_MIN_MS) {
+                // You stopped talking: go back to full-quality music.
+                talkEndPosted = true
+                ctl.post { if (talkSession) endTalk() }
+            }
+        }
         val changed = this.transmitting != transmitting
         this.transmitting = transmitting
         mixer?.localTalking = transmitting
@@ -486,6 +627,7 @@ class Engine(
                 settings.trackIndex = music.index
             }
         }
+        reconcileSoon() // playing music wakes the audio path from standby
         notifyState()
     }
 
@@ -517,7 +659,7 @@ class Engine(
             route = router.routeName,
             bluetooth = router.isBluetooth,
             headsetMic = settings.headsetMic,
-            micOk = capture?.ok ?: (!settings.headsetMic || Permissions.hasMic(context)),
+            micOk = capture?.ok ?: Permissions.hasMic(context),
             peers = peers.values.map {
                 PeerInfo(
                     name = it.name,
@@ -551,6 +693,10 @@ class Engine(
             appAudio = cap != null,
             appAudioSignal = cap?.hasSignal == true,
             appAudioFailed = cap?.failed == true,
+            standby = running && audioMode == AudioMode.OFF,
+            hifi = !settings.headsetMic,
+            talkSession = talkSession,
+            talkReady = talkSession && capture != null && audioMode == AudioMode.CALL,
         )
     }
 
@@ -562,5 +708,11 @@ class Engine(
 
     private companion object {
         const val PEER_TIMEOUT_MS = 5000L
+        /** Keep audio up this long after the last rider drops, to ride out short gaps. */
+        const val STANDBY_DELAY_MS = 20_000L
+        const val AUTO_STOP_MS = 30 * 60_000L
+        const val TALK_HOLD_FRAMES = 150 // 3 s
+        const val TALK_IDLE_MS = 2500L
+        const val TALK_MIN_MS = 4000L
     }
 }
