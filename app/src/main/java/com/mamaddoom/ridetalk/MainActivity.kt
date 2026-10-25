@@ -8,24 +8,34 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.media.AudioManager
+import android.media.projection.MediaProjectionConfig
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings as SysSettings
 import android.text.Editable
+import android.text.TextUtils
 import android.text.TextWatcher
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import com.mamaddoom.ridetalk.net.Transport
 
 class MainActivity : Activity() {
 
@@ -50,17 +60,37 @@ class MainActivity : Activity() {
     private lateinit var myIp: TextView
     private lateinit var musicTitle: TextView
     private lateinit var musicInfo: TextView
+    private lateinit var btnSrcFiles: Button
+    private lateinit var btnSrcApp: Button
+    private lateinit var panelFiles: View
+    private lateinit var panelApp: View
+    private lateinit var seekPos: SeekBar
+    private lateinit var tvPos: TextView
+    private lateinit var tvDur: TextView
     private lateinit var btnPlay: Button
+    private lateinit var btnShuffle: Button
+    private lateinit var btnClearList: Button
+    private lateinit var trackList: LinearLayout
+    private lateinit var btnAppAudio: Button
+    private lateinit var appAudioStatus: TextView
     private lateinit var syncLabel: TextView
 
-    private val stateListener: () -> Unit = { render() }
-    private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Which music panel is shown; the app-audio panel also opens itself while capturing. */
+    private var showAppPanel = false
+    private var seeking = false
+    private var trackListKey = ""
+    /** Songs picked before the service connection was ready. */
+    private var pendingUris: List<Uri>? = null
 
-    /** Mic meter needs a faster refresh than engine state events. */
-    private val meterTick = object : Runnable {
+    private val stateListener: () -> Unit = { render() }
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var visible = false
+
+    /** Mic meter and song position need a faster refresh than engine state events. */
+    private val tick = object : Runnable {
         override fun run() {
             if (engine?.running == true) render()
-            uiHandler.postDelayed(this, 120)
+            uiHandler.postDelayed(this, 150)
         }
     }
 
@@ -69,6 +99,10 @@ class MainActivity : Activity() {
             val s = (binder as IntercomService.LocalBinder).service
             service = s
             s.addListener(stateListener)
+            pendingUris?.let {
+                s.engine.music.add(it)
+                pendingUris = null
+            }
             render()
         }
 
@@ -85,21 +119,31 @@ class MainActivity : Activity() {
         bindViews()
         applyInsets()
         wireControls()
+        // Bound for the whole activity lifetime, not just while visible: the
+        // file and screen-capture pickers put us in the background, and their
+        // results must reach the same running engine.
+        bindService(Intent(this, IntercomService::class.java), connection, Context.BIND_AUTO_CREATE)
         render()
     }
 
     override fun onStart() {
         super.onStart()
-        bindService(Intent(this, IntercomService::class.java), connection, Context.BIND_AUTO_CREATE)
-        uiHandler.post(meterTick)
+        visible = true
+        uiHandler.post(tick)
+        render()
     }
 
     override fun onStop() {
-        uiHandler.removeCallbacks(meterTick)
+        visible = false
+        uiHandler.removeCallbacks(tick)
+        super.onStop()
+    }
+
+    override fun onDestroy() {
         service?.removeListener(stateListener)
         service = null
         unbindService(connection)
-        super.onStop()
+        super.onDestroy()
     }
 
     private fun bindViews() {
@@ -120,7 +164,19 @@ class MainActivity : Activity() {
         myIp = findViewById(R.id.myIp)
         musicTitle = findViewById(R.id.musicTitle)
         musicInfo = findViewById(R.id.musicInfo)
+        btnSrcFiles = findViewById(R.id.btnSrcFiles)
+        btnSrcApp = findViewById(R.id.btnSrcApp)
+        panelFiles = findViewById(R.id.panelFiles)
+        panelApp = findViewById(R.id.panelApp)
+        seekPos = findViewById(R.id.seekPos)
+        tvPos = findViewById(R.id.tvPos)
+        tvDur = findViewById(R.id.tvDur)
         btnPlay = findViewById(R.id.btnPlay)
+        btnShuffle = findViewById(R.id.btnShuffle)
+        btnClearList = findViewById(R.id.btnClearList)
+        trackList = findViewById(R.id.trackList)
+        btnAppAudio = findViewById(R.id.btnAppAudio)
+        appAudioStatus = findViewById(R.id.appAudioStatus)
         syncLabel = findViewById(R.id.syncLabel)
     }
 
@@ -158,7 +214,7 @@ class MainActivity : Activity() {
                 MotionEvent.ACTION_DOWN -> {
                     engine?.setPtt(true)
                     v.isActivated = true
-                    v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     engine?.setPtt(false)
@@ -199,18 +255,51 @@ class MainActivity : Activity() {
             }
         }
 
-        findViewById<Button>(R.id.btnPrev).setOnClickListener { engine?.music?.previous() }
-        findViewById<Button>(R.id.btnNext).setOnClickListener { engine?.music?.next() }
+        // --- music: source tabs
+        btnSrcFiles.setOnClickListener {
+            showAppPanel = false
+            render()
+        }
+        btnSrcApp.setOnClickListener {
+            showAppPanel = true
+            render()
+        }
+
+        // --- music: playlist
+        findViewById<Button>(R.id.btnPrev).setOnClickListener { engine?.let { if (canPlay(it)) it.music.previous() } }
+        findViewById<Button>(R.id.btnNext).setOnClickListener { engine?.let { if (canPlay(it)) it.music.next() } }
         btnPlay.setOnClickListener {
             val e = engine ?: return@setOnClickListener
             when {
-                !e.running -> toast(R.string.start)
-                e.remoteMusicActive() && !e.music.playing -> toast(R.string.remote_music_busy)
-                e.music.playlist.isEmpty() -> pickMusic()
-                else -> e.music.toggle()
+                e.music.tracks.isEmpty() -> pickMusic()
+                canPlay(e) -> e.toggleMusic()
             }
         }
         findViewById<Button>(R.id.btnAddMusic).setOnClickListener { pickMusic() }
+        btnShuffle.setOnClickListener {
+            val e = engine ?: return@setOnClickListener
+            e.music.shuffle = !e.music.shuffle
+            settings.shuffle = e.music.shuffle
+            render()
+        }
+        btnClearList.setOnClickListener { engine?.music?.clear() }
+        seekPos.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, value: Int, fromUser: Boolean) {
+                if (fromUser) tvPos.text = formatTime(value * 1000L)
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar) {
+                seeking = true
+            }
+
+            override fun onStopTrackingTouch(sb: SeekBar) {
+                seeking = false
+                engine?.music?.seekTo(sb.progress * 1000L)
+            }
+        })
+
+        // --- music: any app
+        btnAppAudio.setOnClickListener { toggleAppAudio() }
 
         findViewById<EditText>(R.id.editName).apply {
             setText(settings.name)
@@ -237,25 +326,7 @@ class MainActivity : Activity() {
             )
         }
         findViewById<Button>(R.id.btnBattery).setOnClickListener { requestBatteryExemption() }
-        findViewById<Button>(R.id.btnAutostart).setOnClickListener {
-            launchFirst(
-                // HyperOS / MIUI
-                Intent().setClassName(
-                    "com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity",
-                ),
-                // ColorOS (newer, then older package names)
-                Intent().setClassName(
-                    "com.oplus.safecenter", "com.oplus.safecenter.permission.startup.StartupAppListActivity",
-                ),
-                Intent().setClassName(
-                    "com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity",
-                ),
-                Intent().setClassName(
-                    "com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity",
-                ),
-                appDetailsIntent(),
-            )
-        }
+        findViewById<Button>(R.id.btnAppSettings).setOnClickListener { launchFirst(appDetailsIntent()) }
     }
 
     private fun slider(id: Int, initial: Int, onChange: (Int) -> Unit) {
@@ -274,6 +345,19 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Music needs a running intercom, and only one rider can own the music channel. */
+    private fun canPlay(e: Engine): Boolean = when {
+        !e.running -> {
+            toast(R.string.start_first)
+            false
+        }
+        e.remoteMusicActive() && !e.music.playing -> {
+            toast(R.string.remote_music_busy)
+            false
+        }
+        else -> true
+    }
+
     private fun setPttMode(ptt: Boolean) {
         val e = engine
         if (e != null) e.setPttMode(ptt) else settings.ptt = ptt
@@ -288,7 +372,10 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, results)
-        if (requestCode == REQ_PERMS) startIntercom()
+        when (requestCode) {
+            REQ_PERMS -> startIntercom()
+            REQ_MIC_FOR_APP_AUDIO -> if (Permissions.hasMic(this)) requestProjection() else toast(R.string.perm_denied)
+        }
     }
 
     private fun pickMusic() {
@@ -302,9 +389,50 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun toggleAppAudio() {
+        val e = engine ?: return
+        when {
+            Build.VERSION.SDK_INT < 29 -> toast(R.string.app_audio_unsupported)
+            e.appAudioActive -> startService(
+                Intent(this, IntercomService::class.java).setAction(IntercomService.ACTION_APP_AUDIO_STOP),
+            )
+            !canPlay(e) -> Unit
+            !Permissions.hasMic(this) ->
+                requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), REQ_MIC_FOR_APP_AUDIO)
+            else -> requestProjection()
+        }
+    }
+
+    private fun requestProjection() {
+        val mpm = getSystemService(MediaProjectionManager::class.java)
+        // Whole display: audio capture is not tied to a single shared app window.
+        val intent = if (Build.VERSION.SDK_INT >= 34) {
+            mpm.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+        } else {
+            mpm.createScreenCaptureIntent()
+        }
+        try {
+            startActivityForResult(intent, REQ_PROJECTION)
+        } catch (_: ActivityNotFoundException) {
+            toast(R.string.app_audio_failed)
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQ_MUSIC || resultCode != RESULT_OK || data == null) return
+        if (resultCode != RESULT_OK || data == null) return
+        when (requestCode) {
+            REQ_MUSIC -> onSongsPicked(data)
+            REQ_PROJECTION -> startService(
+                Intent(this, IntercomService::class.java)
+                    .setAction(IntercomService.ACTION_APP_AUDIO)
+                    .putExtra(IntercomService.EXTRA_RESULT_CODE, resultCode)
+                    .putExtra(IntercomService.EXTRA_RESULT_DATA, data),
+            )
+        }
+    }
+
+    private fun onSongsPicked(data: Intent) {
         val uris = ArrayList<Uri>()
         data.clipData?.let { clip -> for (i in 0 until clip.itemCount) uris += clip.getItemAt(i).uri }
         if (uris.isEmpty()) data.data?.let { uris += it }
@@ -316,7 +444,8 @@ class MainActivity : Activity() {
         }
         if (uris.isEmpty()) return
         val e = engine
-        if (e != null) e.setPlaylist(uris) else settings.playlist = uris
+        if (e != null) e.music.add(uris) else pendingUris = uris
+        showAppPanel = false
         render()
     }
 
@@ -330,7 +459,7 @@ class MainActivity : Activity() {
                 appDetailsIntent(),
             )
         } else {
-            // Already exempt from Doze; OEM battery screens live under app details.
+            // Already exempt from Doze; any vendor battery screen lives under app details.
             launchFirst(appDetailsIntent())
         }
     }
@@ -361,6 +490,7 @@ class MainActivity : Activity() {
     // ------------------------------------------------------------------ render
 
     private fun render() {
+        if (!visible && service != null) return
         val e = engine
         val st = e?.takeIf { it.running }?.state()
         val running = st != null
@@ -384,7 +514,12 @@ class MainActivity : Activity() {
         )
         route.text = if (st != null) getString(R.string.route, st.route) else ""
 
-        // Talk
+        renderTalk(st)
+        renderConnection(st)
+        renderMusic(e, st)
+    }
+
+    private fun renderTalk(st: Engine.State?) {
         val ptt = st?.ptt ?: settings.ptt
         btnModeVox.isSelected = !ptt
         btnModePtt.isSelected = ptt
@@ -401,36 +536,126 @@ class MainActivity : Activity() {
         micError.visibility = if (st != null && !st.micOk) View.VISIBLE else View.GONE
         micError.setText(R.string.mic_unavailable)
         if (swHeadsetMic.isChecked != settings.headsetMic) swHeadsetMic.isChecked = settings.headsetMic
+    }
 
-        // Connection
-        peers.text = when {
-            st == null -> getString(R.string.no_peers)
-            st.peers.isEmpty() -> getString(R.string.no_peers)
-            else -> st.peers.joinToString("\n") {
+    private fun renderConnection(st: Engine.State?) {
+        peers.text = if (st == null || st.peers.isEmpty()) {
+            getString(R.string.no_peers)
+        } else {
+            st.peers.joinToString("\n") {
                 getString(
                     R.string.peer_line, it.name,
                     getString(if (it.talking) R.string.talking else R.string.idle), it.quality,
                 )
             }
         }
-        val ips = st?.myIps ?: com.mamaddoom.ridetalk.net.Transport.localAddresses()
+        val ips = st?.myIps ?: Transport.localAddresses()
         myIp.text = buildString {
             append(if (ips.isEmpty()) getString(R.string.no_network) else getString(R.string.my_ip, ips.joinToString(", ")))
             if (st?.wifiBound == true) append("  ·  ").append(getString(R.string.wifi_bound))
         }
+    }
 
-        // Music
+    private fun renderMusic(e: Engine?, st: Engine.State?) {
         val player = e?.music
-        val playlistSize = st?.playlistSize ?: settings.playlist.size
-        musicTitle.text = st?.musicTitle?.takeIf { it.isNotEmpty() }
-            ?: player?.title?.takeIf { it.isNotEmpty() }
-            ?: getString(R.string.music_none)
+        val tracks = st?.tracks ?: player?.tracks?.map { it.title }.orEmpty()
+        val index = st?.trackIndex ?: player?.index ?: 0
+        val filePlaying = st?.filePlaying ?: player?.playing ?: false
+        val appAudio = st?.appAudio == true
+        if (appAudio) showAppPanel = true
+
+        btnSrcFiles.isSelected = !showAppPanel
+        btnSrcApp.isSelected = showAppPanel
+        panelFiles.visibility = if (showAppPanel) View.GONE else View.VISIBLE
+        panelApp.visibility = if (showAppPanel) View.VISIBLE else View.GONE
+
+        musicTitle.text = when {
+            st != null && st.musicPlaying && !st.musicIsLocal -> st.musicTitle
+            showAppPanel -> getString(if (appAudio) R.string.app_audio_title else R.string.music_none)
+            else -> tracks.getOrNull(index) ?: getString(R.string.music_none)
+        }
         musicInfo.text = when {
             st?.musicError == true -> getString(R.string.music_error)
             st != null && st.musicPlaying && !st.musicIsLocal -> getString(R.string.music_from, st.musicFrom)
-            else -> getString(R.string.playlist_count, playlistSize)
+            else -> getString(R.string.playlist_count, tracks.size)
         }
-        btnPlay.setText(if (player?.playing == true) R.string.pause else R.string.play)
+
+        // Playlist panel
+        btnPlay.setText(if (filePlaying) R.string.pause else R.string.play)
+        btnShuffle.isSelected = st?.shuffle ?: settings.shuffle
+        btnClearList.visibility = if (tracks.isEmpty()) View.GONE else View.VISIBLE
+        val dur = st?.durationMs ?: 0L
+        val pos = st?.positionMs ?: 0L
+        val hasTrack = st != null && (st.filePlaying || (player?.active == true))
+        seekPos.isEnabled = hasTrack && dur > 0
+        if (!seeking) {
+            seekPos.max = maxOf(1, (dur / 1000).toInt())
+            seekPos.progress = if (hasTrack) (pos / 1000).toInt() else 0
+            tvPos.text = formatTime(if (hasTrack) pos else 0)
+        }
+        tvDur.text = if (dur > 0) formatTime(dur) else ""
+        renderTrackList(tracks, index, filePlaying)
+
+        // App-audio panel
+        btnAppAudio.setText(if (appAudio) R.string.app_audio_stop else R.string.app_audio_start)
+        btnAppAudio.isSelected = appAudio
+        appAudioStatus.text = when {
+            st == null || !appAudio -> ""
+            st.appAudioFailed -> getString(R.string.app_audio_failed)
+            st.appAudioSignal -> getString(R.string.app_audio_live)
+            else -> getString(R.string.app_audio_waiting)
+        }
+        appAudioStatus.setTextColor(getColor(if (st?.appAudioSignal == true) R.color.ok else R.color.text_dim))
+    }
+
+    /** Rebuilds the song rows only when the list or the current song changes. */
+    private fun renderTrackList(tracks: List<String>, index: Int, playing: Boolean) {
+        val key = "${tracks.hashCode()}|${tracks.size}|$index|$playing"
+        if (key == trackListKey) return
+        trackListKey = key
+        trackList.removeAllViews()
+        val rowHeight = dp(56)
+        for ((i, title) in tracks.withIndex()) {
+            val current = i == index
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setBackgroundResource(R.drawable.button)
+                isSelected = current
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, rowHeight).apply {
+                    topMargin = dp(4)
+                }
+            }
+            val label = TextView(this).apply {
+                text = (if (current && playing) "▶  " else "${i + 1}.  ") + title
+                setTextColor(getColor(if (current) R.color.accent else R.color.text))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                setPaddingRelative(dp(14), 0, dp(8), 0)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setOnClickListener { engine?.let { if (canPlay(it)) it.playTrack(i) } }
+            }
+            val remove = TextView(this).apply {
+                setText(R.string.remove_track)
+                setTextColor(getColor(R.color.text_dim))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(rowHeight, LinearLayout.LayoutParams.MATCH_PARENT)
+                setOnClickListener { engine?.music?.remove(i) }
+            }
+            row.addView(label)
+            row.addView(remove)
+            trackList.addView(row)
+        }
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density + 0.5f).toInt()
+
+    private fun formatTime(ms: Long): String {
+        val s = ms / 1000
+        return "%d:%02d".format(s / 60, s % 60)
     }
 
     private fun toast(res: Int) = Toast.makeText(this, res, Toast.LENGTH_SHORT).show()
@@ -438,5 +663,7 @@ class MainActivity : Activity() {
     private companion object {
         const val REQ_PERMS = 1
         const val REQ_MUSIC = 2
+        const val REQ_PROJECTION = 3
+        const val REQ_MIC_FOR_APP_AUDIO = 4
     }
 }

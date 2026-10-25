@@ -1,10 +1,13 @@
 package com.mamaddoom.ridetalk
 
 import android.content.Context
+import android.media.projection.MediaProjection
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import com.mamaddoom.ridetalk.audio.AppAudioCapture
 import com.mamaddoom.ridetalk.audio.AudioRouter
 import com.mamaddoom.ridetalk.audio.JitterBuffer
 import com.mamaddoom.ridetalk.audio.Mixer
@@ -17,6 +20,7 @@ import com.mamaddoom.ridetalk.net.Transport
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
 /**
@@ -53,11 +57,20 @@ class Engine(
         val myIps: List<String>,
         val wifiBound: Boolean,
         val musicTitle: String,
+        /** Music is audible on the shared channel (from us or from a peer). */
         val musicPlaying: Boolean,
         val musicIsLocal: Boolean,
         val musicFrom: String,
-        val playlistSize: Int,
         val musicError: Boolean,
+        val tracks: List<String>,
+        val trackIndex: Int,
+        val filePlaying: Boolean,
+        val positionMs: Long,
+        val durationMs: Long,
+        val shuffle: Boolean,
+        val appAudio: Boolean,
+        val appAudioSignal: Boolean,
+        val appAudioFailed: Boolean,
     )
 
     val settings = Settings(context)
@@ -82,6 +95,12 @@ class Engine(
     private val opusOut = ByteArray(400)
     private val voiceBuf = ByteBuffer.allocate(Protocol.MAX_PACKET)
     private val musicBuf = ByteBuffer.allocate(Protocol.MAX_PACKET)
+    /** One counter for every music source we own, so receivers see a continuous stream. */
+    private val musicSeq = AtomicInteger()
+    @Volatile private var appCapture: AppAudioCapture? = null
+    @Volatile private var projection: MediaProjection? = null
+    private var savedPlaylist: List<Uri> = emptyList()
+    private var savedIndex = -1
     private val beaconBuf = ByteBuffer.allocate(Protocol.MAX_PACKET)
     private var voiceSeq = 0
     private var beaconSeq = 0
@@ -116,6 +135,7 @@ class Engine(
 
     fun stop() {
         music.stop()
+        stopAppAudio()
         onCtlBlocking {
             if (!running) return@onCtlBlocking
             running = false
@@ -242,9 +262,46 @@ class Engine(
         musicBuffer.minTarget = musicTarget()
     }
 
-    fun setPlaylist(uris: List<Uri>) {
-        settings.playlist = uris
-        music.setPlaylist(uris)
+    // ---------------------------------------------------------------- music
+
+    val appAudioActive get() = appCapture != null
+
+    /** Play/pause the local playlist; takes the channel back from app-audio capture. */
+    fun toggleMusic() {
+        if (!music.playing) stopAppAudio()
+        music.toggle()
+    }
+
+    fun playTrack(i: Int) {
+        stopAppAudio()
+        music.playAt(i)
+    }
+
+    /** Starts streaming whatever other apps play. The engine owns [p] from now on. */
+    fun startAppAudio(p: MediaProjection) {
+        music.pause()
+        stopAppAudio()
+        if (Build.VERSION.SDK_INT < 29) {
+            p.stop()
+            return
+        }
+        projection = p
+        appCapture = AppAudioCapture(p) { sendMusic(it, playLocally = false) }.also { it.start() }
+        notifyState()
+    }
+
+    fun stopAppAudio() {
+        val c = appCapture ?: return
+        appCapture = null
+        c.stop()
+        projection?.let {
+            projection = null
+            try {
+                it.stop()
+            } catch (_: Exception) {
+            }
+        }
+        notifyState()
     }
 
     /** True if another rider's music currently owns the shared channel. */
@@ -284,8 +341,13 @@ class Engine(
     private fun sendBeacon() {
         var flags = 0
         if (transmitting) flags = flags or Protocol.FLAG_TALKING
-        if (music.playing) flags = flags or Protocol.FLAG_MUSIC
-        val title = if (music.playing) music.title else ""
+        val appSignal = appCapture?.hasSignal == true
+        if (music.playing || appSignal) flags = flags or Protocol.FLAG_MUSIC
+        val title = when {
+            music.playing -> music.title
+            appSignal -> context.getString(R.string.app_audio_title)
+            else -> ""
+        }
         val len = Protocol.encodeBeacon(beaconBuf, myId, beaconSeq++, Protocol.Beacon(flags, settings.name, title))
         transport.sendBeacon(beaconBuf.array(), len)
     }
@@ -355,14 +417,21 @@ class Engine(
 
     /** One music source at a time: the first sender keeps the channel until it goes quiet. */
     private fun acceptMusic(sender: Int, seq: Int, pcm: ShortArray) {
+        if (!claimMusic(sender)) return
+        musicBuffer.put(seq, pcm)
+    }
+
+    /** Returns false if another source owns the channel; clears the buffer on a change of source. */
+    @Synchronized
+    private fun claimMusic(sender: Int): Boolean {
         val now = System.currentTimeMillis()
         if (sender != musicSource) {
-            if (now - musicSourceAtMs < 1500) return
+            if (now - musicSourceAtMs < 1500) return false
             musicSource = sender
             musicBuffer.clear()
         }
         musicSourceAtMs = now
-        musicBuffer.put(seq, pcm)
+        return true
     }
 
     // ---------------------------------------------------------------- audio out
@@ -386,13 +455,39 @@ class Engine(
         if (changed) notifyState()
     }
 
-    override fun onMusicPacket(seq: Int, pcm: ShortArray) {
-        val len = Protocol.encodePcm(musicBuf, Protocol.TYPE_MUSIC, myId, seq, pcm, pcm.size)
-        transport.sendToPeers(musicBuf.array(), len)
-        acceptMusic(myId, seq, pcm)
+    override fun onMusicPacket(pcm: ShortArray) = sendMusic(pcm, playLocally = true)
+
+    /**
+     * Sends one music packet to the peers. Playlist music is also played here,
+     * through the same buffer the peers use, so everyone hears it in sync.
+     * Captured app audio is not: this phone already hears the original app.
+     */
+    private fun sendMusic(pcm: ShortArray, playLocally: Boolean) {
+        val seq = musicSeq.getAndIncrement()
+        synchronized(musicBuf) {
+            val len = Protocol.encodePcm(musicBuf, Protocol.TYPE_MUSIC, myId, seq, pcm, pcm.size)
+            transport.sendToPeers(musicBuf.array(), len)
+        }
+        if (playLocally) {
+            acceptMusic(myId, seq, pcm)
+        } else if (claimMusic(myId)) {
+            musicBuffer.clear() // keep nothing of ours queued locally
+        }
     }
 
-    override fun onMusicState() = notifyState()
+    override fun onMusicState() {
+        // Persist playlist edits and the current track (cheap; only writes on change).
+        val uris = music.tracks.map { it.uri }
+        synchronized(this) {
+            if (uris != savedPlaylist || music.index != savedIndex) {
+                savedPlaylist = uris
+                savedIndex = music.index
+                settings.playlist = uris
+                settings.trackIndex = music.index
+            }
+        }
+        notifyState()
+    }
 
     // ---------------------------------------------------------------- state out
 
@@ -414,7 +509,8 @@ class Engine(
         val now = System.currentTimeMillis()
         val src = musicSource
         val remoteMusic = remoteMusicActive()
-        val local = music.playing
+        val cap = appCapture
+        val local = music.playing || cap?.hasSignal == true
         val fromPeer = if (remoteMusic) peers[src] else null
         return State(
             running = running,
@@ -438,21 +534,30 @@ class Engine(
             myIps = myIps,
             wifiBound = transport.boundToWifi,
             musicTitle = when {
-                local -> music.title
                 fromPeer != null -> fromPeer.musicTitle
+                cap != null -> context.getString(R.string.app_audio_title)
                 else -> music.title
             },
             musicPlaying = local || remoteMusic,
             musicIsLocal = !remoteMusic,
             musicFrom = fromPeer?.name.orEmpty(),
-            playlistSize = music.playlist.size,
             musicError = music.error,
+            tracks = music.tracks.map { it.title },
+            trackIndex = music.index,
+            filePlaying = music.playing,
+            positionMs = music.positionMs,
+            durationMs = music.durationMs,
+            shuffle = music.shuffle,
+            appAudio = cap != null,
+            appAudioSignal = cap?.hasSignal == true,
+            appAudioFailed = cap?.failed == true,
         )
     }
 
     // Last, so every field above is initialised before the player calls back.
     init {
-        music.setPlaylist(settings.playlist)
+        music.shuffle = settings.shuffle
+        music.setTracks(settings.playlist, settings.trackIndex)
     }
 
     private companion object {

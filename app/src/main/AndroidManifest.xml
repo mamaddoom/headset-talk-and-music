@@ -21,6 +21,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -29,6 +30,7 @@
     <uses-feature android:name="android.hardware.wifi" android:required="true" />
 
     <application
+        android:allowAudioPlaybackCapture="false"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -53,6 +55,6 @@
         <service
             android:name=".IntercomService"
             android:exported="false"
-            android:foregroundServiceType="microphone|mediaPlayback|connectedDevice" />
+            android:foregroundServiceType="microphone|mediaPlayback|connectedDevice|mediaProjection" />
     </application>
 </manifest>

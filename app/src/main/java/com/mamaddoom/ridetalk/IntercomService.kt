@@ -8,11 +8,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -39,6 +42,9 @@ class IntercomService : Service() {
     private var multicastLock: WifiManager.MulticastLock? = null
     private var session: MediaSession? = null
     private var lastNotificationKey = ""
+    /** Whether our current foreground type includes mediaProjection. */
+    private var foregroundWithProjection = false
+    private var wantProjection = false
 
     override fun onCreate() {
         super.onCreate()
@@ -57,6 +63,8 @@ class IntercomService : Service() {
             }
             ACTION_MUTE -> engine.setMuted(!engine.muted)
             ACTION_PTT -> engine.setPtt(!engine.pttPressed)
+            ACTION_APP_AUDIO -> startAppAudio(intent)
+            ACTION_APP_AUDIO_STOP -> engine.stopAppAudio()
         }
         return START_NOT_STICKY
     }
@@ -79,6 +87,40 @@ class IntercomService : Service() {
         engine.start()
     }
 
+    /** Turns the user's screen-capture consent into a playback-capture session. */
+    private fun startAppAudio(intent: Intent) {
+        if (Build.VERSION.SDK_INT < 29 || !engine.running) return
+        val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
+        val data = if (Build.VERSION.SDK_INT >= 33) {
+            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        } ?: return
+        // Android requires a mediaProjection-type foreground service before the projection is created.
+        wantProjection = true
+        if (!goForeground()) {
+            wantProjection = false
+            return
+        }
+        val projection = try {
+            getSystemService(MediaProjectionManager::class.java).getMediaProjection(code, data)
+        } catch (e: Exception) {
+            Log.e(TAG, "getMediaProjection failed", e)
+            null
+        }
+        if (projection == null) {
+            wantProjection = false
+            goForeground()
+            return
+        }
+        projection.registerCallback(object : MediaProjection.Callback() {
+            // The user can end sharing from the status bar.
+            override fun onStop() = engine.stopAppAudio()
+        }, Handler(mainLooper))
+        engine.startAppAudio(projection)
+    }
+
     fun stopIntercom() {
         engine.stop()
         session?.release()
@@ -86,6 +128,8 @@ class IntercomService : Service() {
         releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)
         lastNotificationKey = ""
+        wantProjection = false
+        foregroundWithProjection = false
         stopSelf()
         onEngineState()
     }
@@ -106,7 +150,9 @@ class IntercomService : Service() {
                 var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
                 if (Permissions.hasMic(this)) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 if (Permissions.hasBluetooth(this)) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                if (wantProjection) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
                 startForeground(NOTIFICATION_ID, notification, types)
+                foregroundWithProjection = wantProjection
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
@@ -164,6 +210,11 @@ class IntercomService : Service() {
     private fun onEngineState() {
         for (l in listeners.toList()) l()
         if (!engine.running) return
+        if (foregroundWithProjection && !engine.appAudioActive) {
+            // Capture ended: drop the mediaProjection type (and its status-bar indicator).
+            wantProjection = false
+            goForeground()
+        }
         val st = engine.state()
         // Only touch the notification when its visible content changes.
         val key = "${st.peers.map { it.name }}|${st.muted}|${st.ptt}|${st.pttPressed}"
@@ -249,5 +300,9 @@ class IntercomService : Service() {
         const val ACTION_STOP = "com.mamaddoom.ridetalk.STOP"
         const val ACTION_MUTE = "com.mamaddoom.ridetalk.MUTE"
         const val ACTION_PTT = "com.mamaddoom.ridetalk.PTT"
+        const val ACTION_APP_AUDIO = "com.mamaddoom.ridetalk.APP_AUDIO"
+        const val ACTION_APP_AUDIO_STOP = "com.mamaddoom.ridetalk.APP_AUDIO_STOP"
+        const val EXTRA_RESULT_CODE = "resultCode"
+        const val EXTRA_RESULT_DATA = "resultData"
     }
 }

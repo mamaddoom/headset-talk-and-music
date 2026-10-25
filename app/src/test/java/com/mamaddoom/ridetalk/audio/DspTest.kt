@@ -62,4 +62,33 @@ class DspTest {
         assertTrue(Pcm.toShort(5f) > 30000)
         assertTrue(Pcm.toShort(-5f) < -30000)
     }
+
+    private fun toneGain(filter: LowPass4, rate: Int, freq: Double): Float {
+        var peak = 0f
+        for (i in 0 until rate) {
+            val y = filter.process(sin(2 * PI * freq * i / rate).toFloat())
+            if (i > rate / 2) peak = maxOf(peak, abs(y))
+        }
+        return peak
+    }
+
+    @Test
+    fun antiAliasFilterPassesMusicAndStopsAliases() {
+        // 44.1 kHz source going to 32 kHz: keep 5 kHz, kill 20 kHz (would alias to 12 kHz).
+        assertTrue(toneGain(LowPass4(44100, 14500.0), 44100, 5000.0) > 0.95f)
+        assertTrue(toneGain(LowPass4(44100, 14500.0), 44100, 20000.0) < 0.3f)
+        // 32 kHz -> 16 kHz in headset mode: 3 kHz voice band passes, 12 kHz is removed.
+        assertTrue(toneGain(LowPass4(32000, 7000.0), 32000, 3000.0) > 0.95f)
+        assertTrue(toneGain(LowPass4(32000, 7000.0), 32000, 12000.0) < 0.2f)
+    }
+
+    @Test
+    fun musicConversionDoesNotCompressLoudPeaks() {
+        // Mastered music peaks near full scale must come through unchanged.
+        assertEquals((0.95f * 32767).toInt().toShort(), Pcm.clampToShort(0.95f))
+        assertEquals(Short.MAX_VALUE, Pcm.clampToShort(1.5f))
+        assertEquals(Short.MIN_VALUE, Pcm.clampToShort(-1.5f))
+        // The mixer's soft clipper is transparent up to its knee.
+        assertEquals((0.85f * 32767).toInt().toShort(), Pcm.toShort(0.85f))
+    }
 }

@@ -12,7 +12,7 @@
     <string name="stop">توقف</string>
 
     <string name="sec_connection">اتصال</string>
-    <string name="connection_help">۱. هات‌اسپات یکی از گوشی‌ها را روشن کنید.\n۲. گوشی دیگر را با وای‌فای به آن هات‌اسپات وصل کنید.\n۳. در هر دو گوشی «شروع» را بزنید؛ خودشان همدیگر را پیدا می‌کنند.</string>
+    <string name="connection_help">۱. هات‌اسپات یکی از گوشی‌ها را روشن کنید (اینترنت لازم نیست).\n۲. بقیهٔ موتورسوارها — یک نفر یا چند نفر — با وای‌فای به همان هات‌اسپات وصل شوند.\n۳. در همهٔ گوشی‌ها «شروع» را بزنید؛ خودشان همدیگر را پیدا می‌کنند و همه صدای همه را می‌شنوند.</string>
     <string name="open_hotspot">هات‌اسپات</string>
     <string name="open_wifi">وای‌فای</string>
     <string name="my_ip">این گوشی: %1$s</string>
@@ -43,7 +43,7 @@
     <string name="headset_button_note">دکمهٔ هندزفری: در حالت میکروفن باز قطع/وصل میکروفن، در حالت فشار برای صحبت شروع/پایان صحبت. بعضی هندزفری‌ها این دکمه را فقط برای تماس تلفنی می‌فرستند.</string>
 
     <string name="sec_music">موزیک مشترک</string>
-    <string name="add_music">انتخاب آهنگ‌ها</string>
+    <string name="add_music">+ افزودن آهنگ</string>
     <string name="playlist_count">%1$d آهنگ در لیست</string>
     <string name="music_none">آهنگی انتخاب نشده</string>
     <string name="music_from">در حال پخش از %1$s</string>
@@ -61,8 +61,7 @@
     <string name="sec_settings">تنظیمات و پایداری</string>
     <string name="name_hint">اسم شما (به نفر دیگر نمایش داده می‌شود)</string>
     <string name="battery_opt">باتری: بدون محدودیت</string>
-    <string name="autostart">اجرای خودکار / اطلاعات برنامه</string>
-    <string name="guide">برای کار با صفحهٔ خاموش در ColorOS (اوپو) و HyperOS (شیائومی):\n• باتری ← رایدتاک را روی «بدون محدودیت» / «اجازهٔ فعالیت در پس‌زمینه» بگذارید.\n• «اجرای خودکار» (Autostart) رایدتاک را روشن کنید.\n• رایدتاک را در صفحهٔ برنامه‌های اخیر قفل کنید.\n• هات‌اسپات اوپو: گزینهٔ «خاموش شدن خودکار هات‌اسپات» را خاموش کنید.\n• شیائومی: اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای» را خاموش کنید.</string>
+    <string name="guide">برای کار مطمئن با صفحهٔ خاموش:\n• باتری: رایدتاک را روی «بدون محدودیت» بگذارید / اجازهٔ فعالیت در پس‌زمینه بدهید.\n• اگر گوشی شما گزینهٔ «اجرای خودکار» یا «برنامه‌های پس‌زمینه» دارد، آن را برای رایدتاک روشن کنید (دکمهٔ تنظیمات برنامه).\n• رایدتاک را در صفحهٔ برنامه‌های اخیر قفل کنید تا سیستم آن را نبندد.\n• در گوشی هات‌اسپات، «خاموش شدن خودکار هات‌اسپات» را غیرفعال کنید.\n• اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای / سوییچ هوشمند شبکه» را خاموش کنید.</string>
     <string name="perm_denied">برای صحبت کردن مجوز میکروفن لازم است.</string>
 
     <string name="route_default">پیش‌فرض گوشی</string>
@@ -72,4 +71,20 @@
     <string name="route_wired">هندزفری سیمی</string>
     <string name="route_speaker">بلندگوی گوشی</string>
     <string name="route_earpiece">اسپیکر مکالمهٔ گوشی</string>
+
+    <string name="app_settings">تنظیمات برنامه</string>
+    <string name="src_files">لیست پخش</string>
+    <string name="src_app">هر برنامه‌ای</string>
+    <string name="shuffle">🔀 تصادفی</string>
+    <string name="clear_list">پاک کردن لیست</string>
+    <string name="remove_track">✕</string>
+    <string name="start_first">اول اینترکام را شروع کنید.</string>
+    <string name="app_audio_title">موزیک از برنامهٔ دیگر</string>
+    <string name="app_audio_start">ارسال صدای برنامه‌های گوشی</string>
+    <string name="app_audio_stop">توقف ارسال صدای برنامه‌ها</string>
+    <string name="app_audio_note">در هر برنامه‌ای روی این گوشی موزیک پخش کنید (اسپاتیفای، یوتیوب موزیک، پادکست، موزیک‌پلیر گوشی…) تا همهٔ افراد متصل آن را بشنوند. خودتان صدا را مستقیم از همان برنامه می‌شنوید. اندروید اجازهٔ «ضبط صفحه» می‌خواهد؛ فقط صدا استفاده می‌شود و هیچ چیزی از صفحه ضبط یا ارسال نمی‌شود. چند برنامهٔ محدود اجازهٔ اشتراک صدا نمی‌دهند و ساکت می‌مانند.</string>
+    <string name="app_audio_live">● در حال ارسال برای همه</string>
+    <string name="app_audio_waiting">منتظر… در برنامهٔ موزیک خود آهنگ را پخش کنید.</string>
+    <string name="app_audio_failed">این گوشی اجازهٔ ضبط صدای برنامه‌ها را نمی‌دهد.</string>
+    <string name="app_audio_unsupported">ارسال صدای برنامه‌ها به اندروید ۱۰ یا بالاتر نیاز دارد.</string>
 </resources>

@@ -28,9 +28,9 @@ class Biquad private constructor(
     companion object {
         private const val Q = 0.7071
 
-        fun highPass(rate: Int, freq: Double): Biquad {
+        fun highPass(rate: Int, freq: Double, q: Double = Q): Biquad {
             val w = 2 * PI * freq / rate
-            val alpha = sin(w) / (2 * Q)
+            val alpha = sin(w) / (2 * q)
             val c = cos(w)
             val a0 = 1 + alpha
             return Biquad(
@@ -39,9 +39,9 @@ class Biquad private constructor(
             )
         }
 
-        fun lowPass(rate: Int, freq: Double): Biquad {
+        fun lowPass(rate: Int, freq: Double, q: Double = Q): Biquad {
             val w = 2 * PI * freq / rate
-            val alpha = sin(w) / (2 * Q)
+            val alpha = sin(w) / (2 * q)
             val c = cos(w)
             val a0 = 1 + alpha
             return Biquad(
@@ -49,6 +49,18 @@ class Biquad private constructor(
                 (-2 * c / a0).toFloat(), ((1 - alpha) / a0).toFloat(),
             )
         }
+    }
+}
+
+/** 4th-order Butterworth low-pass (two cascaded biquads), used as anti-alias filter. */
+class LowPass4(rate: Int, freq: Double) {
+    private val a = Biquad.lowPass(rate, freq, 0.5412)
+    private val b = Biquad.lowPass(rate, freq, 1.3066)
+
+    fun process(x: Float) = b.process(a.process(x))
+
+    fun reset() {
+        a.reset(); b.reset()
     }
 }
 
@@ -138,15 +150,20 @@ object Pcm {
         return if (rms < 1e-6) -120f else (20 * log10(rms)).toFloat()
     }
 
-    /** Soft clipper: transparent below ~0.8, smoothly limits peaks. */
+    /** Plain conversion with clamping; used for music so mastered peaks stay undistorted. */
+    fun clampToShort(x: Float): Short = (x * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+
+    /** Soft clipper: transparent below 0.9, smoothly limits peaks when voices and music add up. */
     fun toShort(x: Float): Short {
         val y = when {
-            x > 0.8f -> 0.8f + 0.2f * softKnee((x - 0.8f) / 0.2f)
-            x < -0.8f -> -0.8f - 0.2f * softKnee((-x - 0.8f) / 0.2f)
+            x > KNEE -> KNEE + (1 - KNEE) * softKnee((x - KNEE) / (1 - KNEE))
+            x < -KNEE -> -KNEE - (1 - KNEE) * softKnee((-x - KNEE) / (1 - KNEE))
             else -> x
         }
         return (y * 32767f).toInt().coerceIn(-32768, 32767).toShort()
     }
+
+    private const val KNEE = 0.9f
 
     /** Maps 0..inf to 0..1 smoothly. */
     private fun softKnee(t: Float) = t / (1f + t)

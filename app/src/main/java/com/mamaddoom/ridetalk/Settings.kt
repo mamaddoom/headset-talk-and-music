@@ -55,6 +55,14 @@ class Settings(context: Context) {
         get() = p.getString("playlist", "").orEmpty().split('\n').filter { it.isNotEmpty() }.map(Uri::parse)
         set(v) = p.edit().putString("playlist", v.joinToString("\n")).apply()
 
+    var trackIndex: Int
+        get() = p.getInt("trackIndex", 0)
+        set(v) = p.edit().putInt("trackIndex", v).apply()
+
+    var shuffle: Boolean
+        get() = p.getBoolean("shuffle", false)
+        set(v) = p.edit().putBoolean("shuffle", v).apply()
+
     /** Maps sensitivity 0..100 to a VOX threshold of -25..-55 dBFS. */
     fun voxThresholdDb(): Float = -25f - voxSensitivity * 0.3f
 }

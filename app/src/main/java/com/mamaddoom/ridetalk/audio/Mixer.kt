@@ -93,8 +93,8 @@ class Mixer(
         val voicePcm = ShortArray(Protocol.VOICE_FRAME)
         val mix = FloatArray(periodFrames * channels)
         val out = ShortArray(periodFrames * channels)
-        // Half-band smoothing state for 32 kHz -> 16 kHz music in SCO mode.
-        var dPrev = 0f
+        // Anti-alias filter for 32 kHz -> 16 kHz music in SCO mode.
+        val decimLp = LowPass4(Protocol.MUSIC_RATE, 7000.0)
         var duckGain = 1f
         val duckAttack = 1f - Math.exp(-1.0 / (0.03 * outRate)).toFloat()
         val duckRelease = 1f - Math.exp(-1.0 / (0.6 * outRate)).toFloat()
@@ -146,11 +146,9 @@ class Mixer(
                     } else {
                         val base = half * (Protocol.MUSIC_FRAMES / 2)
                         for (i in 0 until Protocol.MUSIC_FRAMES / 2) {
-                            // Downmix two stereo frames, smooth, then decimate by 2.
-                            val a = (pkt[i * 4] + pkt[i * 4 + 1]) / 65536f
-                            val b = (pkt[i * 4 + 2] + pkt[i * 4 + 3]) / 65536f
-                            val y = 0.25f * dPrev + 0.5f * a + 0.25f * b
-                            dPrev = b
+                            // Downmix to mono, low-pass, then keep every second sample.
+                            decimLp.process((pkt[i * 4] + pkt[i * 4 + 1]) / 65536f)
+                            val y = decimLp.process((pkt[i * 4 + 2] + pkt[i * 4 + 3]) / 65536f)
                             duckGain += (duckTarget - duckGain) *
                                 (if (duckTarget < duckGain) duckAttack else duckRelease)
                             mix[base + i] += y * mv * duckGain
