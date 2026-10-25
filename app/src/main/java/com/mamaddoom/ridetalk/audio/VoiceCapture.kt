@@ -26,6 +26,8 @@ class VoiceCapture(
         fun onVoiceFrame(pcm: ShortArray)
         /** Called on the capture thread ~10x per second. */
         fun onMicLevel(levelDb: Float, transmitting: Boolean)
+        /** True while another rider's voice is playing here (for anti-feedback). */
+        fun isFarEndActive(): Boolean
     }
 
     enum class Mode { VOX, PTT }
@@ -37,6 +39,12 @@ class VoiceCapture(
     @Volatile var voxThresholdDb = -40f
     /** Noise reduction 0..100: drives the spectral denoiser and the wind high-pass. */
     @Volatile var noiseReduction = 60
+    /**
+     * Anti-feedback: while someone else is talking, our mic is held 20 dB down
+     * unless we clearly talk ourselves, so a speaker-to-mic loop between two
+     * phones can't build up into howling or echo.
+     */
+    @Volatile var antiFeedback = true
     /** Set >0 to force the VOX gate open for that many frames (tap-to-talk). */
     @Volatile var holdOpenFrames = 0
 
@@ -124,7 +132,11 @@ class VoiceCapture(
                 for (i in 0 until frame) f[i] = hpf.process(raw[i] / 32768f)
                 denoiser.process(f, frame)
                 for (i in 0 until frame) f[i] *= g
-                val level = Pcm.rmsDb(f, frame)
+                var level = Pcm.rmsDb(f, frame)
+                if (antiFeedback && mode == Mode.VOX && level < voxThresholdDb + 12f && sink.isFarEndActive()) {
+                    for (i in 0 until frame) f[i] *= 0.1f
+                    level -= 20f
+                }
                 val out = ShortArray(frame)
                 for (i in 0 until frame) out[i] = Pcm.toShort(f[i])
 

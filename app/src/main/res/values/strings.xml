@@ -103,4 +103,19 @@
     <string name="battery_saver">Battery saver</string>
     <string name="battery_saver_note">While nobody is connected and nothing is playing, the mic and Bluetooth call link are switched off; they come back automatically when someone connects. After 30 minutes alone the intercom turns itself off.</string>
     <string name="status_standby">Waiting for riders · power saving</string>
+
+    <string name="mode_saved">Your choice is saved and stays the default next time.</string>
+    <string name="drive_mode">🏍 Driving screen</string>
+    <string name="drive_exit">Exit driving screen</string>
+    <string name="drive_music_play">▶  Music</string>
+    <string name="drive_music_pause">⏸  Music</string>
+    <string name="drive_no_music">No songs in the playlist</string>
+    <string name="drive_screen_on">Keep screen on in driving screen</string>
+    <string name="cues">Sound when a rider joins or leaves</string>
+    <string name="cues_note">A short rising tone when someone connects, a falling tone when someone drops out.</string>
+    <string name="anti_feedback">Anti-feedback (no howling or echo)</string>
+    <string name="anti_feedback_note">While someone else talks, your mic is turned down unless you talk clearly yourself. Prevents howling when phones are on speaker near each other. Turn off for fully simultaneous talking.</string>
+    <string name="group_code">Group code (optional)</string>
+    <string name="group_code_hint">Empty = anyone on this hotspot</string>
+    <string name="group_code_note">Everyone in your group enters the same code. Only phones with the same code hear each other, and all audio is encrypted (AES). Applies immediately.</string>
 </resources>

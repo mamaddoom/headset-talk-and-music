@@ -27,6 +27,7 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -78,6 +79,11 @@ class MainActivity : Activity() {
     private lateinit var btnAppAudio: Button
     private lateinit var appAudioStatus: TextView
     private lateinit var syncLabel: TextView
+    private lateinit var driveOverlay: View
+    private lateinit var driveStatus: TextView
+    private lateinit var driveMusicTitle: TextView
+    private lateinit var driveTalk: Button
+    private lateinit var driveMusic: Button
 
     /** Which music panel is shown; the app-audio panel also opens itself while capturing. */
     private var showAppPanel = false
@@ -186,11 +192,16 @@ class MainActivity : Activity() {
         btnAppAudio = findViewById(R.id.btnAppAudio)
         appAudioStatus = findViewById(R.id.appAudioStatus)
         syncLabel = findViewById(R.id.syncLabel)
+        driveOverlay = findViewById(R.id.driveOverlay)
+        driveStatus = findViewById(R.id.driveStatus)
+        driveMusicTitle = findViewById(R.id.driveMusicTitle)
+        driveTalk = findViewById(R.id.driveTalk)
+        driveMusic = findViewById(R.id.driveMusic)
     }
 
     /** targetSdk 35 draws edge to edge; keep content clear of the system bars. */
     private fun applyInsets() {
-        val root = findViewById<View>(R.id.root)
+        val root = findViewById<View>(R.id.frame)
         root.setOnApplyWindowInsetsListener { v, insets ->
             if (Build.VERSION.SDK_INT >= 30) {
                 val b = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
@@ -217,34 +228,17 @@ class MainActivity : Activity() {
             }
         }
 
-        btnPtt.setOnTouchListener { v, ev ->
-            val e = engine
-            if (!settings.headsetMic) {
-                // Music-quality mode: a tap starts or ends a talk session.
-                if (ev.actionMasked == MotionEvent.ACTION_UP) {
-                    if (e?.running == true) {
-                        e.toggleTalk()
-                        v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    } else {
-                        toast(R.string.start_first)
-                    }
-                }
-                return@setOnTouchListener true
+        btnPtt.setOnTouchListener(::onTalkTouch)
+        driveTalk.setOnTouchListener(::onTalkTouch)
+        driveMusic.setOnClickListener {
+            val e = engine ?: return@setOnClickListener
+            when {
+                e.music.tracks.isEmpty() -> toast(R.string.drive_no_music)
+                canPlay(e) -> e.toggleMusic()
             }
-            // Call mode, push-to-talk: talk while held.
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    e?.setPtt(true)
-                    v.isActivated = true
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    e?.setPtt(false)
-                    v.isActivated = false
-                }
-            }
-            true
         }
+        findViewById<Button>(R.id.btnDrive).setOnClickListener { showDriveScreen(true) }
+        findViewById<Button>(R.id.driveExit).setOnClickListener { showDriveScreen(false) }
 
         btnModeHifi.setOnClickListener { setAudioMode(callMode = false) }
         btnModeCall.setOnClickListener { setAudioMode(callMode = true) }
@@ -253,12 +247,31 @@ class MainActivity : Activity() {
             renderNoiseLabel()
         }
         renderNoiseLabel()
-        findViewById<Switch>(R.id.swBatterySaver).apply {
-            isChecked = settings.batterySaver
-            setOnCheckedChangeListener { _, c ->
-                val e = engine
-                if (e != null) e.setBatterySaver(c) else settings.batterySaver = c
-            }
+        switch(R.id.swBatterySaver, settings.batterySaver) {
+            val e = engine
+            if (e != null) e.setBatterySaver(it) else settings.batterySaver = it
+        }
+        switch(R.id.swCues, settings.cues) { settings.cues = it }
+        switch(R.id.swAntiFeedback, settings.antiFeedback) {
+            settings.antiFeedback = it
+            engine?.applySettings()
+        }
+        switch(R.id.swDriveScreen, settings.driveKeepScreenOn) {
+            settings.driveKeepScreenOn = it
+            if (driveOverlay.visibility == View.VISIBLE) showDriveScreen(true)
+        }
+        findViewById<EditText>(R.id.editGroup).apply {
+            setText(settings.groupCode)
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun afterTextChanged(s: Editable?) {
+                    pendingGroupCode = s?.toString().orEmpty()
+                    // Apply once typing pauses, not on every key (key derivation is not free).
+                    uiHandler.removeCallbacks(applyGroupCode)
+                    uiHandler.postDelayed(applyGroupCode, 800)
+                }
+            })
         }
 
         btnModeVox.setOnClickListener { setPttMode(false) }
@@ -357,6 +370,72 @@ class MainActivity : Activity() {
         }
         findViewById<Button>(R.id.btnBattery).setOnClickListener { requestBatteryExemption() }
         findViewById<Button>(R.id.btnAppSettings).setOnClickListener { launchFirst(appDetailsIntent()) }
+    }
+
+    /** Shared by the talk button and the driving screen's talk button. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun onTalkTouch(v: View, ev: MotionEvent): Boolean {
+        val e = engine
+        if (!settings.headsetMic) {
+            // Music-quality mode: a tap starts or ends a talk session.
+            if (ev.actionMasked == MotionEvent.ACTION_UP) {
+                if (e?.running == true) {
+                    e.toggleTalk()
+                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                } else {
+                    toast(R.string.start_first)
+                }
+            }
+            return true
+        }
+        if (!settings.ptt) {
+            // Call mode, open mic: the button mutes / unmutes.
+            if (ev.actionMasked == MotionEvent.ACTION_UP) e?.let { it.setMuted(!it.muted) }
+            return true
+        }
+        // Call mode, push-to-talk: talk while held.
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                e?.setPtt(true)
+                v.isActivated = true
+                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                e?.setPtt(false)
+                v.isActivated = false
+            }
+        }
+        return true
+    }
+
+    private var pendingGroupCode = ""
+    private val applyGroupCode = Runnable {
+        val e = engine
+        if (e != null) e.setGroupCode(pendingGroupCode) else settings.groupCode = pendingGroupCode
+    }
+
+    private fun switch(id: Int, initial: Boolean, onChange: (Boolean) -> Unit) {
+        findViewById<Switch>(id).apply {
+            isChecked = initial
+            setOnCheckedChangeListener { _, c -> onChange(c) }
+        }
+    }
+
+    private fun showDriveScreen(show: Boolean) {
+        driveOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        if (show && settings.driveKeepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        render()
+    }
+
+    // Back closes the driving screen first. (Delivered because we don't opt in to predictive back.)
+    @Deprecated("Still delivered without predictive back opt-in")
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (driveOverlay.visibility == View.VISIBLE) showDriveScreen(false) else super.onBackPressed()
     }
 
     private fun slider(id: Int, initial: Int, onChange: (Int) -> Unit) {
@@ -567,6 +646,30 @@ class MainActivity : Activity() {
         renderTalk(st)
         renderConnection(st)
         renderMusic(e, st)
+        if (driveOverlay.visibility == View.VISIBLE) renderDrive(st)
+    }
+
+    private fun renderDrive(st: Engine.State?) {
+        driveStatus.text = status.text
+        driveStatus.setTextColor(status.currentTextColor)
+        driveMusicTitle.text = if (st?.musicPlaying == true) st.musicTitle else ""
+        val hifi = !settings.headsetMic
+        driveTalk.isActivated = when {
+            hifi -> st?.talkReady == true
+            settings.ptt -> st?.pttPressed == true
+            else -> st?.transmitting == true
+        }
+        driveTalk.text = getString(
+            when {
+                hifi && st?.talkReady == true -> R.string.talk_live
+                hifi && st?.talkSession == true -> R.string.talk_preparing
+                hifi -> R.string.ptt_tap
+                settings.ptt -> R.string.ptt_hold
+                st?.muted == true -> R.string.unmute
+                else -> R.string.mute
+            },
+        )
+        driveMusic.setText(if (st?.filePlaying == true) R.string.drive_music_pause else R.string.drive_music_play)
     }
 
     private fun renderTalk(st: Engine.State?) {

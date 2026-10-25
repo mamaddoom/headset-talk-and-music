@@ -103,4 +103,19 @@
     <string name="battery_saver">صرفه‌جویی باتری</string>
     <string name="battery_saver_note">وقتی کسی وصل نیست و موزیکی پخش نمی‌شود، میکروفن و اتصال تماس بلوتوث خاموش می‌شوند و با وصل شدن یک نفر خودکار روشن می‌شوند. اگر ۳۰ دقیقه تنها باشید اینترکام خودش خاموش می‌شود.</string>
     <string name="status_standby">در انتظار همراه · حالت کم‌مصرف</string>
+
+    <string name="mode_saved">انتخاب شما ذخیره می‌شود و دفعهٔ بعد هم پیش‌فرض می‌ماند.</string>
+    <string name="drive_mode">🏍 صفحهٔ رانندگی</string>
+    <string name="drive_exit">خروج از صفحهٔ رانندگی</string>
+    <string name="drive_music_play">▶  موزیک</string>
+    <string name="drive_music_pause">⏸  موزیک</string>
+    <string name="drive_no_music">آهنگی در لیست پخش نیست</string>
+    <string name="drive_screen_on">روشن ماندن صفحه در صفحهٔ رانندگی</string>
+    <string name="cues">صدای کوتاه هنگام ورود یا خروج همراه</string>
+    <string name="cues_note">وقتی کسی وصل می‌شود یک صدای رو به بالا، و وقتی قطع می‌شود یک صدای رو به پایین می‌شنوید.</string>
+    <string name="anti_feedback">جلوگیری از سوت و اکو</string>
+    <string name="anti_feedback_note">وقتی نفر دیگری صحبت می‌کند، میکروفن شما کم می‌شود مگر اینکه خودتان واضح صحبت کنید. جلوی سوت کشیدن را وقتی گوشی‌ها روی بلندگو و نزدیک هم هستند می‌گیرد. برای صحبت کاملاً همزمان خاموشش کنید.</string>
+    <string name="group_code">کد گروه (اختیاری)</string>
+    <string name="group_code_hint">خالی = همهٔ افراد این هات‌اسپات</string>
+    <string name="group_code_note">همهٔ اعضای گروه یک کد یکسان وارد کنند. فقط گوشی‌هایی با کد یکسان صدای هم را می‌شنوند و همهٔ صداها رمزگذاری می‌شوند (AES). بلافاصله اعمال می‌شود.</string>
 </resources>

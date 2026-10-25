@@ -15,6 +15,7 @@ import com.mamaddoom.ridetalk.audio.MusicPlayer
 import com.mamaddoom.ridetalk.audio.PeerAudio
 import com.mamaddoom.ridetalk.audio.VoiceCapture
 import com.mamaddoom.ridetalk.audio.VoiceEncoder
+import com.mamaddoom.ridetalk.net.PacketCrypto
 import com.mamaddoom.ridetalk.net.Protocol
 import com.mamaddoom.ridetalk.net.Transport
 import java.net.InetSocketAddress
@@ -138,6 +139,10 @@ class Engine(
     @Volatile private var lastPeerMs = 0L
     private var startedMs = 0L
 
+    /** A join/leave cue that arrived while the mixer was not running yet (standby wake-up). */
+    @Volatile private var queuedCue: Mixer.Cue? = null
+    @Volatile private var queuedCueAtMs = 0L
+
     /** Called (on the control thread) when battery saver decides to switch the intercom off. */
     @Volatile var onAutoStop: (() -> Unit)? = null
 
@@ -151,6 +156,7 @@ class Engine(
         running = true
         startedMs = System.currentTimeMillis()
         lastPeerMs = 0
+        transport.crypto = groupCrypto()
         transport.start()
         reconcileAudio()
         ctl.post(tick)
@@ -254,6 +260,10 @@ class Engine(
             it.start()
         }
         mixer = m
+        queuedCue?.let {
+            if (System.currentTimeMillis() - queuedCueAtMs < 3000) m.cue(it)
+            queuedCue = null
+        }
         if (sco && Permissions.hasMic(context)) {
             capture = VoiceCapture(router.inputDevice, this).also {
                 applyCaptureSettings(it)
@@ -264,7 +274,7 @@ class Engine(
                     it.holdOpenFrames = TALK_HOLD_FRAMES
                     talkStartedMs = System.currentTimeMillis()
                     lastSpeechMs = talkStartedMs
-                    m.beepPending = true
+                    m.cue(Mixer.Cue.READY)
                 }
                 it.start()
             }
@@ -359,6 +369,31 @@ class Engine(
         }
     }
 
+    /** Changes the group code; riders with a different code disappear immediately. */
+    fun setGroupCode(code: String) {
+        settings.groupCode = code
+        onCtl {
+            transport.crypto = groupCrypto()
+            peers.clear()
+            updatePeerAddresses()
+            notifyState()
+        }
+    }
+
+    private fun groupCrypto(): PacketCrypto? =
+        settings.groupCode.takeIf { it.isNotBlank() }?.let { PacketCrypto(it) }
+
+    private fun playCue(cue: Mixer.Cue) {
+        if (!settings.cues) return
+        val m = mixer
+        if (m != null) {
+            m.cue(cue)
+        } else {
+            queuedCue = cue
+            queuedCueAtMs = System.currentTimeMillis()
+        }
+    }
+
     fun setBatterySaver(enabled: Boolean) {
         settings.batterySaver = enabled
         reconcileSoon()
@@ -425,6 +460,7 @@ class Engine(
         c.muted = muted && !talkSession
         c.pttPressed = pttPressed
         c.noiseReduction = settings.noiseReduction
+        c.antiFeedback = settings.antiFeedback
     }
 
     private fun applyMixerSettings(m: Mixer) {
@@ -490,6 +526,7 @@ class Engine(
                 changed = true
             }
         }
+        if (changed) playCue(Mixer.Cue.LEAVE)
         if (changed) updatePeerAddresses()
     }
 
@@ -506,6 +543,7 @@ class Engine(
         if (header.type == Protocol.TYPE_BYE) {
             if (peers.remove(header.sender) != null) {
                 updatePeerAddresses()
+                playCue(Mixer.Cue.LEAVE)
                 notifyState()
             }
             return
@@ -539,6 +577,7 @@ class Engine(
         peers[id] = p
         lastPeerMs = now
         updatePeerAddresses()
+        playCue(Mixer.Cue.JOIN)
         reconcileSoon() // wake from battery-saver standby
         // Answer right away so the other side learns about us without waiting a second.
         ctl.post(::sendBeacon)
@@ -595,6 +634,8 @@ class Engine(
         mixer?.localTalking = transmitting
         if (changed) notifyState()
     }
+
+    override fun isFarEndActive() = mixer?.remoteTalking == true
 
     override fun onMusicPacket(pcm: ShortArray) = sendMusic(pcm, playLocally = true)
 

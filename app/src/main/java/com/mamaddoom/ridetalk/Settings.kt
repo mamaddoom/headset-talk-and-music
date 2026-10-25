@@ -54,6 +54,26 @@ class Settings(context: Context) {
         get() = p.getInt("nr", 60)
         set(v) = p.edit().putInt("nr", v).apply()
 
+    /** Short tones in the headset when a rider joins or leaves. */
+    var cues: Boolean
+        get() = p.getBoolean("cues", true)
+        set(v) = p.edit().putBoolean("cues", v).apply()
+
+    /** Optional group code; empty = open group, otherwise packets are encrypted with it. */
+    var groupCode: String
+        get() = p.getString("group", "").orEmpty()
+        set(v) = p.edit().putString("group", v.trim().take(32)).apply()
+
+    /** Hold the mic down while others talk, to stop speaker/mic feedback loops. */
+    var antiFeedback: Boolean
+        get() = p.getBoolean("antiFeedback", true)
+        set(v) = p.edit().putBoolean("antiFeedback", v).apply()
+
+    /** Keep the screen on while the driving screen is open. */
+    var driveKeepScreenOn: Boolean
+        get() = p.getBoolean("driveScreenOn", false)
+        set(v) = p.edit().putBoolean("driveScreenOn", v).apply()
+
     /** Standby while alone, auto-off after 30 minutes alone. */
     var batterySaver: Boolean
         get() = p.getBoolean("batterySaver", true)

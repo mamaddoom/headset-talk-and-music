@@ -1,317 +1,428 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/frame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
-    android:fillViewport="true">
+    android:background="@color/bg">
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/root"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="24dp">
+        android:layout_height="match_parent"
+        android:background="@color/bg"
+        android:fillViewport="true">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/accent"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
 
-        <TextView
-            android:id="@+id/status"
-            style="@style/Body"
-            android:layout_marginTop="4dp"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/route"
-            style="@style/Note" />
-
-        <Button
-            android:id="@+id/btnStart"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/button_start"
-            android:stateListAnimator="@null"
-            android:text="@string/start"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <!-- Talk -->
-        <LinearLayout style="@style/Card">
-
-            <TextView style="@style/CardTitle" android:text="@string/sec_talk" />
-
-            <!-- Audio mode: music quality (tap to talk) or call mode (mic always on) -->
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/accent"
+                android:textSize="28sp"
+                android:textStyle="bold" />
 
-                <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_hifi" />
-                <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_call" />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/status"
+                style="@style/Body"
+                android:layout_marginTop="4dp"
+                android:textSize="20sp"
+                android:textStyle="bold" />
 
-            <TextView android:id="@+id/modeNote" style="@style/Note" android:layout_marginBottom="8dp" />
+            <TextView
+                android:id="@+id/route"
+                style="@style/Note" />
 
             <Button
-                android:id="@+id/btnPtt"
+                android:id="@+id/btnStart"
                 android:layout_width="match_parent"
-                android:layout_height="140dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/button_ptt"
+                android:layout_height="80dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/button_start"
                 android:stateListAnimator="@null"
-                android:text="@string/ptt_hold"
+                android:text="@string/start"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnDrive"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/button"
+                android:stateListAnimator="@null"
+                android:text="@string/drive_mode"
                 android:textAllCaps="false"
                 android:textColor="@color/text"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                android:textSize="18sp" />
 
-            <LinearLayout
-                android:id="@+id/callControls"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+            <!-- Talk -->
+            <LinearLayout style="@style/Card">
 
+                <TextView style="@style/CardTitle" android:text="@string/sec_talk" />
+
+                <!-- Audio mode: music quality (tap to talk) or call mode (mic always on) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <Button
-                        android:id="@+id/btnModeVox"
-                        style="@style/BigButton"
-                        android:text="@string/mode_vox" />
-
-                    <Button
-                        android:id="@+id/btnModePtt"
-                        style="@style/BigButton"
-                        android:text="@string/mode_ptt" />
+                    <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_hifi" />
+                    <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:textSize="16sp" android:text="@string/mode_call" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <Button
-                        android:id="@+id/btnMute"
-                        style="@style/BigButton"
-                        android:text="@string/mute" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/onAir"
-                style="@style/Body"
-                android:layout_marginTop="8dp"
-                android:text="@string/transmitting"
-                android:textColor="@color/danger"
-                android:textStyle="bold"
-                android:visibility="invisible" />
-
-            <TextView style="@style/Label" android:text="@string/mic_level" />
-
-            <ProgressBar
-                android:id="@+id/micMeter"
-                style="@android:style/Widget.ProgressBar.Horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="12dp"
-                android:layout_marginTop="6dp"
-                android:max="100"
-                android:progressDrawable="@drawable/meter" />
-
-            <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
-
-            <TextView android:id="@+id/noiseLabel" style="@style/Label" />
-            <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
-            <TextView style="@style/Note" android:text="@string/noise_note" />
-
-            <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
-            <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
-
-            <TextView style="@style/Label" android:text="@string/mic_gain" />
-            <SeekBar android:id="@+id/seekGain" style="@style/Slider" android:max="250" />
-
-            <TextView style="@style/Label" android:text="@string/voice_volume" />
-            <SeekBar android:id="@+id/seekVoice" style="@style/Slider" android:max="200" />
-
-            <TextView style="@style/Note" android:text="@string/headset_button_note" />
-        </LinearLayout>
-
-        <!-- Connection -->
-        <LinearLayout style="@style/Card">
-
-            <TextView style="@style/CardTitle" android:text="@string/sec_connection" />
-
-            <TextView android:id="@+id/peers" style="@style/Body" android:textSize="17sp" />
-
-            <TextView android:id="@+id/myIp" style="@style/Note" />
-
-            <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/connection_help" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
-
-                <Button android:id="@+id/btnHotspot" style="@style/BigButton" android:text="@string/open_hotspot" />
-                <Button android:id="@+id/btnWifi" style="@style/BigButton" android:text="@string/open_wifi" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Music -->
-        <LinearLayout style="@style/Card">
-
-            <TextView style="@style/CardTitle" android:text="@string/sec_music" />
-
-            <TextView
-                android:id="@+id/musicTitle"
-                style="@style/Body"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView android:id="@+id/musicInfo" style="@style/Note" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
-
-                <Button android:id="@+id/btnSrcFiles" style="@style/BigButton" android:text="@string/src_files" />
-                <Button android:id="@+id/btnSrcApp" style="@style/BigButton" android:text="@string/src_app" />
-            </LinearLayout>
-
-            <!-- Source: local playlist -->
-            <LinearLayout
-                android:id="@+id/panelFiles"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <SeekBar android:id="@+id/seekPos" style="@style/Slider" android:layout_marginTop="8dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layoutDirection="ltr">
-
-                    <TextView android:id="@+id/tvPos" style="@style/Note" android:layout_width="0dp" android:layout_weight="1" />
-                    <TextView android:id="@+id/tvDur" style="@style/Note" android:layout_width="0dp" android:layout_weight="1" android:gravity="end" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:layoutDirection="ltr">
-
-                    <Button android:id="@+id/btnPrev" style="@style/BigButton" android:text="@string/prev" android:textSize="26sp" />
-                    <Button android:id="@+id/btnPlay" style="@style/BigButton" android:text="@string/play" android:textSize="26sp" />
-                    <Button android:id="@+id/btnNext" style="@style/BigButton" android:text="@string/next" android:textSize="26sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <Button android:id="@+id/btnAddMusic" style="@style/BigButton" android:text="@string/add_music" />
-                    <Button android:id="@+id/btnShuffle" style="@style/BigButton" android:text="@string/shuffle" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/trackList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
+                <TextView android:id="@+id/modeNote" style="@style/Note" />
+                <TextView style="@style/Note" android:layout_marginBottom="8dp" android:text="@string/mode_saved" />
 
                 <Button
-                    android:id="@+id/btnClearList"
-                    style="@style/BigButton"
+                    android:id="@+id/btnPtt"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_weight="0"
-                    android:text="@string/clear_list"
-                    android:textColor="@color/text_dim"
-                    android:textSize="15sp" />
+                    android:layout_height="140dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/button_ptt"
+                    android:stateListAnimator="@null"
+                    android:text="@string/ptt_hold"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/callControls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/btnModeVox"
+                            style="@style/BigButton"
+                            android:text="@string/mode_vox" />
+
+                        <Button
+                            android:id="@+id/btnModePtt"
+                            style="@style/BigButton"
+                            android:text="@string/mode_ptt" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/btnMute"
+                            style="@style/BigButton"
+                            android:text="@string/mute" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/onAir"
+                    style="@style/Body"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/transmitting"
+                    android:textColor="@color/danger"
+                    android:textStyle="bold"
+                    android:visibility="invisible" />
+
+                <TextView style="@style/Label" android:text="@string/mic_level" />
+
+                <ProgressBar
+                    android:id="@+id/micMeter"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="12dp"
+                    android:layout_marginTop="6dp"
+                    android:max="100"
+                    android:progressDrawable="@drawable/meter" />
+
+                <TextView android:id="@+id/micError" style="@style/Note" android:textColor="@color/danger" android:visibility="gone" />
+
+                <TextView android:id="@+id/noiseLabel" style="@style/Label" />
+                <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
+                <TextView style="@style/Note" android:text="@string/noise_note" />
+
+                <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
+                <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
+
+                <TextView style="@style/Label" android:text="@string/mic_gain" />
+                <SeekBar android:id="@+id/seekGain" style="@style/Slider" android:max="250" />
+
+                <TextView style="@style/Label" android:text="@string/voice_volume" />
+                <SeekBar android:id="@+id/seekVoice" style="@style/Slider" android:max="200" />
+
+                <TextView style="@style/Note" android:text="@string/headset_button_note" />
             </LinearLayout>
 
-            <!-- Source: any app on this phone -->
-            <LinearLayout
-                android:id="@+id/panelApp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
+            <!-- Connection -->
+            <LinearLayout style="@style/Card">
 
-                <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/app_audio_note" />
+                <TextView style="@style/CardTitle" android:text="@string/sec_connection" />
+
+                <TextView android:id="@+id/peers" style="@style/Body" android:textSize="17sp" />
+
+                <TextView android:id="@+id/myIp" style="@style/Note" />
+
+                <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/connection_help" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
 
-                    <Button
-                        android:id="@+id/btnAppAudio"
-                        style="@style/BigButton"
-                        android:layout_height="72dp"
-                        android:text="@string/app_audio_start" />
+                    <Button android:id="@+id/btnHotspot" style="@style/BigButton" android:text="@string/open_hotspot" />
+                    <Button android:id="@+id/btnWifi" style="@style/BigButton" android:text="@string/open_wifi" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Music -->
+            <LinearLayout style="@style/Card">
+
+                <TextView style="@style/CardTitle" android:text="@string/sec_music" />
+
+                <TextView
+                    android:id="@+id/musicTitle"
+                    style="@style/Body"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView android:id="@+id/musicInfo" style="@style/Note" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
+
+                    <Button android:id="@+id/btnSrcFiles" style="@style/BigButton" android:text="@string/src_files" />
+                    <Button android:id="@+id/btnSrcApp" style="@style/BigButton" android:text="@string/src_app" />
                 </LinearLayout>
 
-                <TextView android:id="@+id/appAudioStatus" style="@style/Body" android:layout_marginTop="4dp" />
+                <!-- Source: local playlist -->
+                <LinearLayout
+                    android:id="@+id/panelFiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <SeekBar android:id="@+id/seekPos" style="@style/Slider" android:layout_marginTop="8dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layoutDirection="ltr">
+
+                        <TextView android:id="@+id/tvPos" style="@style/Note" android:layout_width="0dp" android:layout_weight="1" />
+                        <TextView android:id="@+id/tvDur" style="@style/Note" android:layout_width="0dp" android:layout_weight="1" android:gravity="end" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layoutDirection="ltr">
+
+                        <Button android:id="@+id/btnPrev" style="@style/BigButton" android:text="@string/prev" android:textSize="26sp" />
+                        <Button android:id="@+id/btnPlay" style="@style/BigButton" android:text="@string/play" android:textSize="26sp" />
+                        <Button android:id="@+id/btnNext" style="@style/BigButton" android:text="@string/next" android:textSize="26sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <Button android:id="@+id/btnAddMusic" style="@style/BigButton" android:text="@string/add_music" />
+                        <Button android:id="@+id/btnShuffle" style="@style/BigButton" android:text="@string/shuffle" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/trackList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="vertical" />
+
+                    <Button
+                        android:id="@+id/btnClearList"
+                        style="@style/BigButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_weight="0"
+                        android:text="@string/clear_list"
+                        android:textColor="@color/text_dim"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <!-- Source: any app on this phone -->
+                <LinearLayout
+                    android:id="@+id/panelApp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/app_audio_note" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnAppAudio"
+                            style="@style/BigButton"
+                            android:layout_height="72dp"
+                            android:text="@string/app_audio_start" />
+                    </LinearLayout>
+
+                    <TextView android:id="@+id/appAudioStatus" style="@style/Body" android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <TextView style="@style/Label" android:text="@string/music_volume" />
+                <SeekBar android:id="@+id/seekMusic" style="@style/Slider" android:max="100" />
+
+                <Switch android:id="@+id/swDuck" style="@style/BigSwitch" android:text="@string/ducking" />
+
+                <TextView android:id="@+id/syncLabel" style="@style/Label" />
+                <SeekBar android:id="@+id/seekSync" style="@style/Slider" android:max="40" />
+                <TextView style="@style/Note" android:text="@string/sync_note" />
             </LinearLayout>
 
-            <TextView style="@style/Label" android:text="@string/music_volume" />
-            <SeekBar android:id="@+id/seekMusic" style="@style/Slider" android:max="100" />
+            <!-- Settings -->
+            <LinearLayout style="@style/Card">
 
-            <Switch android:id="@+id/swDuck" style="@style/BigSwitch" android:text="@string/ducking" />
+                <TextView style="@style/CardTitle" android:text="@string/sec_settings" />
 
-            <TextView android:id="@+id/syncLabel" style="@style/Label" />
-            <SeekBar android:id="@+id/seekSync" style="@style/Slider" android:max="40" />
-            <TextView style="@style/Note" android:text="@string/sync_note" />
-        </LinearLayout>
+                <EditText
+                    android:id="@+id/editName"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:hint="@string/name_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textPersonName"
+                    android:maxLength="24"
+                    android:textColor="@color/text"
+                    android:textColorHint="@color/text_dim" />
 
-        <!-- Settings -->
-        <LinearLayout style="@style/Card">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
 
-            <TextView style="@style/CardTitle" android:text="@string/sec_settings" />
+                    <Button android:id="@+id/btnBattery" style="@style/BigButton" android:textSize="15sp" android:text="@string/battery_opt" />
+                    <Button android:id="@+id/btnAppSettings" style="@style/BigButton" android:textSize="15sp" android:text="@string/app_settings" />
+                </LinearLayout>
 
-            <EditText
-                android:id="@+id/editName"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:hint="@string/name_hint"
-                android:importantForAutofill="no"
-                android:inputType="textPersonName"
-                android:maxLength="24"
-                android:textColor="@color/text"
-                android:textColorHint="@color/text_dim" />
+                <Switch android:id="@+id/swBatterySaver" style="@style/BigSwitch" android:text="@string/battery_saver" />
+                <TextView style="@style/Note" android:text="@string/battery_saver_note" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                <Switch android:id="@+id/swCues" style="@style/BigSwitch" android:text="@string/cues" />
+                <TextView style="@style/Note" android:text="@string/cues_note" />
 
-                <Button android:id="@+id/btnBattery" style="@style/BigButton" android:textSize="15sp" android:text="@string/battery_opt" />
-                <Button android:id="@+id/btnAppSettings" style="@style/BigButton" android:textSize="15sp" android:text="@string/app_settings" />
+                <Switch android:id="@+id/swAntiFeedback" style="@style/BigSwitch" android:text="@string/anti_feedback" />
+                <TextView style="@style/Note" android:text="@string/anti_feedback_note" />
+
+                <Switch android:id="@+id/swDriveScreen" style="@style/BigSwitch" android:text="@string/drive_screen_on" />
+
+                <TextView style="@style/Label" android:text="@string/group_code" />
+                <EditText
+                    android:id="@+id/editGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:hint="@string/group_code_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textVisiblePassword"
+                    android:maxLength="32"
+                    android:textColor="@color/text"
+                    android:textColorHint="@color/text_dim" />
+                <TextView style="@style/Note" android:text="@string/group_code_note" />
+
+                <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/guide" />
             </LinearLayout>
-
-            <Switch android:id="@+id/swBatterySaver" style="@style/BigSwitch" android:text="@string/battery_saver" />
-            <TextView style="@style/Note" android:text="@string/battery_saver_note" />
-
-            <TextView style="@style/Note" android:layout_marginTop="8dp" android:text="@string/guide" />
         </LinearLayout>
+    </ScrollView>
+
+    <!-- Driving screen: black (cheap on OLED), two huge buttons, nothing else to mis-tap. -->
+    <LinearLayout
+        android:id="@+id/driveOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/driveStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/ok"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/driveMusicTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/text_dim"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/driveTalk"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:background="@drawable/button_ptt"
+            android:stateListAnimator="@null"
+            android:textAllCaps="false"
+            android:textColor="@color/text"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/driveMusic"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:background="@drawable/button"
+            android:stateListAnimator="@null"
+            android:textAllCaps="false"
+            android:textColor="@color/text"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/driveExit"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/button"
+            android:stateListAnimator="@null"
+            android:text="@string/drive_exit"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dim"
+            android:textSize="18sp" />
     </LinearLayout>
-</ScrollView>
+</FrameLayout>

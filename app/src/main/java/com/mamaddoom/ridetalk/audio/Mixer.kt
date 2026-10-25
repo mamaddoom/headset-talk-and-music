@@ -36,8 +36,23 @@ class Mixer(
     @Volatile var duckingEnabled = true
     /** Set by the engine while we are transmitting, so our own talking also ducks music. */
     @Volatile var localTalking = false
-    /** Plays a short two-tone "mic is live" cue at the next period. */
-    @Volatile var beepPending = false
+    /** Two-tone cues mixed into the output: mic ready, rider joined, rider left. */
+    enum class Cue(val first: Double, val second: Double, val level: Double) {
+        READY(880.0, 1320.0, 0.25),
+        JOIN(660.0, 990.0, 0.18),
+        LEAVE(990.0, 660.0, 0.18),
+    }
+
+    @Volatile private var pendingCue: Cue? = null
+
+    /** Plays [cue] at the next period (a newer cue replaces one not yet started). */
+    fun cue(cue: Cue) {
+        pendingCue = cue
+    }
+
+    /** Set while any remote rider is audible; used by anti-feedback on the mic side. */
+    @Volatile var remoteTalking = false
+        private set
 
     @Volatile private var running = false
     private var thread: Thread? = null
@@ -102,6 +117,7 @@ class Mixer(
         val duckRelease = 1f - Math.exp(-1.0 / (0.6 * outRate)).toFloat()
         var beepLeft = 0
         var beepPhase = 0.0
+        var beep = Cue.READY
 
         try {
             track.play()
@@ -109,6 +125,7 @@ class Mixer(
                 mix.fill(0f)
                 val now = System.currentTimeMillis()
                 var anyTalking = localTalking
+                var remote = false
 
                 // --- voice from every peer ---
                 val vv = voiceVolume
@@ -117,7 +134,10 @@ class Mixer(
                     val level = Pcm.rmsDb(voicePcm)
                     p.levelDb = level
                     if (level > -48f) p.lastVoiceAtMs = now
-                    if (now - p.lastVoiceAtMs < 400) anyTalking = true
+                    if (now - p.lastVoiceAtMs < 400) {
+                        anyTalking = true
+                        remote = true
+                    }
                     if (channels == 1) {
                         for (i in 0 until periodFrames) mix[i] += voicePcm[i] / 32768f * vv
                     } else {
@@ -160,8 +180,10 @@ class Mixer(
                     }
                 }
 
-                if (beepPending) {
-                    beepPending = false
+                remoteTalking = remote
+                pendingCue?.let {
+                    pendingCue = null
+                    beep = it
                     beepLeft = outRate * 18 / 100 // 180 ms
                 }
                 if (beepLeft > 0) {
@@ -169,11 +191,11 @@ class Mixer(
                     for (f in 0 until periodFrames) {
                         if (beepLeft <= 0) break
                         val t = total - beepLeft
-                        val freq = if (t < total / 2) 880.0 else 1320.0
+                        val freq = if (t < total / 2) beep.first else beep.second
                         beepPhase += 2 * Math.PI * freq / outRate
                         // 10 ms fade in/out avoids clicks.
                         val env = minOf(1f, minOf(t, beepLeft) / (outRate / 100f))
-                        val v = (Math.sin(beepPhase) * 0.25 * env).toFloat()
+                        val v = (Math.sin(beepPhase) * beep.level * env).toFloat()
                         for (c in 0 until channels) mix[f * channels + c] += v
                         beepLeft--
                     }

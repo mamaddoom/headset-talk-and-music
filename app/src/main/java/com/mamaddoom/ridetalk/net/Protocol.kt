@@ -110,8 +110,8 @@ object Protocol {
         return out
     }
 
-    fun encodeBye(buf: ByteBuffer, sender: Int): Int {
-        writeHeader(buf, TYPE_BYE, sender, 0)
+    fun encodeBye(buf: ByteBuffer, sender: Int, seq: Int): Int {
+        writeHeader(buf, TYPE_BYE, sender, seq)
         return HEADER
     }
 

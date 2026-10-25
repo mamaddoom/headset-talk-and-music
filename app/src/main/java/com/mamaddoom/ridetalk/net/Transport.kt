@@ -52,6 +52,13 @@ class Transport(
     /** Unicast destinations, maintained by the engine from live peers. */
     @Volatile var peerAddresses: List<InetSocketAddress> = emptyList()
 
+    /** Group code encryption; null = open group. Packets of the other kind are dropped. */
+    @Volatile var crypto: PacketCrypto? = null
+    private var byeSeq = 0
+    private val sealBuf = object : ThreadLocal<ByteArray>() {
+        override fun initialValue() = ByteArray(Protocol.MAX_PACKET + PacketCrypto.OVERHEAD + 64)
+    }
+
     val boundToWifi get() = wifiNetwork != null
 
     private val wifiCallback = object : ConnectivityManager.NetworkCallback() {
@@ -91,7 +98,7 @@ class Transport(
         if (!running) return
         // Best effort goodbye so the other side drops us immediately.
         val buf = ByteBuffer.allocate(Protocol.HEADER)
-        val len = Protocol.encodeBye(buf, myId)
+        val len = Protocol.encodeBye(buf, myId, byeSeq++)
         sendToPeers(buf.array(), len)
         running = false
         try {
@@ -135,7 +142,8 @@ class Transport(
 
     private fun receiveLoop() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
-        val data = ByteArray(Protocol.MAX_PACKET + 64)
+        val data = ByteArray(Protocol.MAX_PACKET + PacketCrypto.OVERHEAD + 64)
+        val scratch = ByteArray(data.size)
         val packet = DatagramPacket(data, data.size)
         val buf = ByteBuffer.wrap(data)
         while (running) {
@@ -157,8 +165,16 @@ class Transport(
                 if (running && !needReopen) sleepQuietly(100)
                 continue
             }
+            var length = packet.length
+            val c = crypto
+            if (c != null) {
+                length = c.open(data, length, scratch)
+                if (length < 0) continue // other group, or no code
+            } else if (PacketCrypto.isSealed(data, length)) {
+                continue // a group with a code we don't have
+            }
             buf.clear()
-            buf.limit(packet.length)
+            buf.limit(length)
             val header = Protocol.readHeader(buf) ?: continue
             if (header.sender == myId) continue // our own broadcast echo
             val from = packet.socketAddress as? InetSocketAddress ?: continue
@@ -174,9 +190,12 @@ class Transport(
     /** Sends to all known peers. Safe to call from any thread. */
     fun sendToPeers(data: ByteArray, len: Int) {
         val s = socket ?: return
-        for (addr in peerAddresses) {
+        val peers = peerAddresses
+        if (peers.isEmpty()) return
+        val (out, n) = seal(data, len)
+        for (addr in peers) {
             try {
-                s.send(DatagramPacket(data, len, addr))
+                s.send(DatagramPacket(out, n, addr))
             } catch (_: Exception) {
                 // Peer unreachable or socket being swapped; the next frame retries.
             }
@@ -186,6 +205,7 @@ class Transport(
     /** Sends a beacon to every reachable broadcast address, the Wi-Fi gateway and known peers. */
     fun sendBeacon(data: ByteArray, len: Int) {
         val s = socket ?: return
+        val (out, n) = seal(data, len)
         val targets = LinkedHashSet<InetAddress>()
         targets.addAll(broadcastAddresses())
         gateway()?.let { targets.add(it) }
@@ -195,11 +215,18 @@ class Transport(
         }
         for (addr in targets) {
             try {
-                s.send(DatagramPacket(data, len, addr, Protocol.PORT))
+                s.send(DatagramPacket(out, n, addr, Protocol.PORT))
             } catch (_: Exception) {
             }
         }
         sendToPeers(data, len)
+    }
+
+    /** Applies the group code, if any. Returns the bytes to put on the wire. */
+    private fun seal(data: ByteArray, len: Int): Pair<ByteArray, Int> {
+        val c = crypto ?: return data to len
+        val out = sealBuf.get()!!
+        return out to c.seal(data, len, out)
     }
 
     private fun broadcastAddresses(): List<InetAddress> {
