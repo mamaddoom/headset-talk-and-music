@@ -39,6 +39,19 @@ class Biquad private constructor(
             )
         }
 
+        /** Peaking EQ: boosts (or cuts) [gainDb] around [freq]. */
+        fun peaking(rate: Int, freq: Double, gainDb: Double, q: Double): Biquad {
+            val a = Math.pow(10.0, gainDb / 40)
+            val w = 2 * PI * freq / rate
+            val alpha = sin(w) / (2 * q)
+            val c = cos(w)
+            val a0 = 1 + alpha / a
+            return Biquad(
+                ((1 + alpha * a) / a0).toFloat(), (-2 * c / a0).toFloat(), ((1 - alpha * a) / a0).toFloat(),
+                (-2 * c / a0).toFloat(), ((1 - alpha / a) / a0).toFloat(),
+            )
+        }
+
         fun lowPass(rate: Int, freq: Double, q: Double = Q): Biquad {
             val w = 2 * PI * freq / rate
             val alpha = sin(w) / (2 * q)
@@ -61,6 +74,31 @@ class LowPass4(rate: Int, freq: Double) {
 
     fun reset() {
         a.reset(); b.reset()
+    }
+}
+
+/**
+ * Gentle feed-forward compressor with make-up gain. Used on music squeezed
+ * into a Bluetooth call link: quiet passages come up so the song stays
+ * intelligible over wind and engine noise, loud peaks stay below clipping.
+ */
+class Compressor(
+    rate: Int,
+    private val thresholdDb: Float = -24f,
+    private val ratio: Float = 3f,
+    private val makeupDb: Float = 5f,
+) {
+    private val attack = 1f - Math.exp(-1.0 / (0.005 * rate)).toFloat()
+    private val release = 1f - Math.exp(-1.0 / (0.150 * rate)).toFloat()
+    private var env = 0f
+
+    fun process(x: Float): Float {
+        val a = kotlin.math.abs(x)
+        env += (a - env) * (if (a > env) attack else release)
+        val levelDb = if (env < 1e-6f) -120f else (20 * log10(env.toDouble())).toFloat()
+        val over = levelDb - thresholdDb
+        val gainDb = (if (over > 0) -over * (1 - 1 / ratio) else 0f) + makeupDb
+        return x * Math.pow(10.0, gainDb / 20.0).toFloat()
     }
 }
 

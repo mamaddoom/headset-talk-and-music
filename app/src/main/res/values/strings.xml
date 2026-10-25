@@ -63,9 +63,9 @@
     <string name="perm_denied">Microphone permission is required to talk.</string>
 
     <string name="route_default">phone default</string>
-    <string name="route_bt">%1$s (Bluetooth call)</string>
-    <string name="route_ble">%1$s (Bluetooth LE)</string>
-    <string name="route_a2dp">%1$s (Bluetooth music)</string>
+    <string name="route_bt">%1$s (Bluetooth call link)</string>
+    <string name="route_ble">%1$s (LE Audio)</string>
+    <string name="route_a2dp">%1$s (Bluetooth stereo)</string>
     <string name="route_wired">wired headset</string>
     <string name="route_speaker">phone speaker</string>
     <string name="route_earpiece">phone earpiece</string>
@@ -89,7 +89,7 @@
     <string name="mode_hifi">🎵 Music quality</string>
     <string name="mode_call">📞 Mic always on</string>
     <string name="mode_hifi_note">Music and voices play in full stereo quality. To talk, tap the big button or your headset button: a beep tells you the mic is live, and after you stop talking it switches back to full quality by itself.</string>
-    <string name="mode_call_note">The headset mic is always available, hands-free. Bluetooth only carries the mic in “call” mode (mono 16 kHz), so music sounds like a phone call.</string>
+    <string name="mode_call_note">The headset mic is always available, hands-free. Classic Bluetooth only carries the mic in “call” mode (mono, up to 16 kHz), so music sounds like a phone call — the app squeezes the best it can out of it. LE Audio headsets (LC3) and wired headsets keep full quality even here.</string>
     <string name="ptt_tap">TAP TO TALK</string>
     <string name="talk_preparing">Opening mic…</string>
     <string name="talk_live">● Talk now · tap to finish</string>
@@ -118,4 +118,8 @@
     <string name="group_code">Group code (optional)</string>
     <string name="group_code_hint">Empty = anyone on this hotspot</string>
     <string name="group_code_note">Everyone in your group enters the same code. Only phones with the same code hear each other, and all audio is encrypted (AES). Applies immediately.</string>
+
+    <string name="link_hq">Sound quality: full (stereo)</string>
+    <string name="link_le">Sound quality: full · LE Audio — mic and quality music at the same time</string>
+    <string name="link_narrow">Sound quality: limited (Bluetooth call link)</string>
 </resources>

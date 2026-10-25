@@ -183,6 +183,16 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
         else -> d.productName.toString()
     }
 
+    /**
+     * True when audio goes over a classic Bluetooth call link (HFP/SCO): mono,
+     * 16 kHz at best. LE Audio, A2DP, wired and the speaker are full quality.
+     */
+    val isNarrowband: Boolean
+        get() = outputDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+
+    val isLeAudio: Boolean
+        get() = outputDevice?.type.let { it == TYPE_BLE_HEADSET || it == TYPE_BLE_SPEAKER }
+
     val isBluetooth: Boolean
         get() = outputDevice?.type.let {
             it == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||

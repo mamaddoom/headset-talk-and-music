@@ -64,8 +64,8 @@
 
     <string name="route_default">پیش‌فرض گوشی</string>
     <string name="route_bt">%1$s (بلوتوث تماس)</string>
-    <string name="route_ble">%1$s (بلوتوث LE)</string>
-    <string name="route_a2dp">%1$s (بلوتوث موزیک)</string>
+    <string name="route_ble">%1$s (LE Audio)</string>
+    <string name="route_a2dp">%1$s (بلوتوث استریو)</string>
     <string name="route_wired">هندزفری سیمی</string>
     <string name="route_speaker">بلندگوی گوشی</string>
     <string name="route_earpiece">اسپیکر مکالمهٔ گوشی</string>
@@ -89,7 +89,7 @@
     <string name="mode_hifi">🎵 کیفیت موزیک</string>
     <string name="mode_call">📞 میکروفن همیشه باز</string>
     <string name="mode_hifi_note">موزیک و صدای همراه‌ها با کیفیت کامل استریو پخش می‌شود. برای صحبت، دکمهٔ بزرگ یا دکمهٔ هندزفری را بزنید: یک بوق کوتاه یعنی میکروفن آماده است، و وقتی صحبتتان تمام شد خودش به کیفیت کامل برمی‌گردد.</string>
-    <string name="mode_call_note">میکروفن هندزفری همیشه بدون دست زدن آماده است. بلوتوث میکروفن را فقط در حالت «تماس» (تک‌کاناله ۱۶ کیلوهرتز) منتقل می‌کند، پس کیفیت موزیک مثل صدای تماس تلفنی می‌شود.</string>
+    <string name="mode_call_note">میکروفن هندزفری همیشه بدون دست زدن آماده است. بلوتوث معمولی میکروفن را فقط در حالت «تماس» (تک‌کاناله، حداکثر ۱۶ کیلوهرتز) منتقل می‌کند، پس موزیک شبیه صدای تماس می‌شود؛ برنامه بهترین کیفیت ممکن را از آن بیرون می‌کشد. هندزفری‌های LE Audio (LC3) و هندزفری سیمی حتی در این حالت هم کیفیت کامل دارند.</string>
     <string name="ptt_tap">برای صحبت بزنید</string>
     <string name="talk_preparing">در حال باز کردن میکروفن…</string>
     <string name="talk_live">● صحبت کنید · برای پایان بزنید</string>
@@ -118,4 +118,8 @@
     <string name="group_code">کد گروه (اختیاری)</string>
     <string name="group_code_hint">خالی = همهٔ افراد این هات‌اسپات</string>
     <string name="group_code_note">همهٔ اعضای گروه یک کد یکسان وارد کنند. فقط گوشی‌هایی با کد یکسان صدای هم را می‌شنوند و همهٔ صداها رمزگذاری می‌شوند (AES). بلافاصله اعمال می‌شود.</string>
+
+    <string name="link_hq">کیفیت صدا: کامل (استریو)</string>
+    <string name="link_le">کیفیت صدا: کامل · LE Audio — میکروفن و موزیک باکیفیت همزمان</string>
+    <string name="link_narrow">کیفیت صدا: محدود (لینک تماس بلوتوث)</string>
 </resources>

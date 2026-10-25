@@ -79,6 +79,9 @@ class Engine(
         val talkSession: Boolean,
         /** The mic is live in the current talk session. */
         val talkReady: Boolean,
+        /** Current audio link carries full-quality stereo (not a classic Bluetooth call link). */
+        val linkHighQuality: Boolean,
+        val leAudio: Boolean,
     )
 
     val settings = Settings(context)
@@ -255,7 +258,8 @@ class Engine(
         if (!running || audioMode == AudioMode.OFF) return
         closeStreams()
         val sco = audioMode == AudioMode.CALL
-        val m = Mixer(sco, router.outputDevice, peerAudios, musicBuffer).also {
+        // Only a classic Bluetooth call link forces 16 kHz mono; LE Audio keeps full quality with the mic on.
+        val m = Mixer(sco, !sco || !router.isNarrowband, router.outputDevice, peerAudios, musicBuffer).also {
             applyMixerSettings(it)
             it.start()
         }
@@ -738,6 +742,8 @@ class Engine(
             hifi = !settings.headsetMic,
             talkSession = talkSession,
             talkReady = talkSession && capture != null && audioMode == AudioMode.CALL,
+            linkHighQuality = audioMode == AudioMode.HIFI || (audioMode == AudioMode.CALL && !router.isNarrowband),
+            leAudio = audioMode != AudioMode.OFF && router.isLeAudio,
         )
     }
 

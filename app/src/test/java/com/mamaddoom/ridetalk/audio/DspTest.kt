@@ -91,4 +91,33 @@ class DspTest {
         // The mixer's soft clipper is transparent up to its knee.
         assertEquals((0.85f * 32767).toInt().toShort(), Pcm.toShort(0.85f))
     }
+
+    private fun steadyPeak(rate: Int, freq: Double, amp: Float, f: (Float) -> Float): Float {
+        var peak = 0f
+        for (i in 0 until rate) {
+            val y = f((sin(2 * PI * freq * i / rate) * amp).toFloat())
+            if (i > rate / 2) peak = maxOf(peak, abs(y))
+        }
+        return peak
+    }
+
+    @Test
+    fun presenceEqBoostsOnlyAroundItsFrequency() {
+        val eq = { Biquad.peaking(16000, 3200.0, 3.0, 0.8) }
+        val atCenter = eq().let { b -> steadyPeak(16000, 3200.0, 0.5f) { b.process(it) } }
+        val farAway = eq().let { b -> steadyPeak(16000, 200.0, 0.5f) { b.process(it) } }
+        // Compare with the same sampled signal unfiltered (5 samples per cycle at 3.2 kHz).
+        val refCenter = steadyPeak(16000, 3200.0, 0.5f) { it }
+        val refFar = steadyPeak(16000, 200.0, 0.5f) { it }
+        assertEquals(1.41f, atCenter / refCenter, 0.05f) // +3 dB
+        assertEquals(1.0f, farAway / refFar, 0.05f)
+    }
+
+    @Test
+    fun compressorLiftsQuietMusicAndTamesPeaks() {
+        val quiet = Compressor(16000).let { c -> steadyPeak(16000, 440.0, 0.01f) { c.process(it) } }
+        val loud = Compressor(16000).let { c -> steadyPeak(16000, 440.0, 1.0f) { c.process(it) } }
+        assertTrue("quiet passage should come up, got $quiet", quiet > 0.015f)
+        assertTrue("full-scale peak should stay below clipping, got $loud", loud < 0.5f)
+    }
 }

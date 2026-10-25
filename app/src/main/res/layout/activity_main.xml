@@ -42,6 +42,11 @@
                 android:id="@+id/route"
                 style="@style/Note" />
 
+            <TextView
+                android:id="@+id/linkQuality"
+                style="@style/Note"
+                android:textStyle="bold" />
+
             <Button
                 android:id="@+id/btnStart"
                 android:layout_width="match_parent"

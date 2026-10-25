@@ -46,6 +46,7 @@ class MainActivity : Activity() {
 
     private lateinit var status: TextView
     private lateinit var route: TextView
+    private lateinit var linkQuality: TextView
     private lateinit var btnStart: Button
     private lateinit var btnPtt: Button
     private lateinit var btnModeVox: Button
@@ -159,6 +160,7 @@ class MainActivity : Activity() {
     private fun bindViews() {
         status = findViewById(R.id.status)
         route = findViewById(R.id.route)
+        linkQuality = findViewById(R.id.linkQuality)
         btnStart = findViewById(R.id.btnStart)
         btnPtt = findViewById(R.id.btnPtt)
         btnModeVox = findViewById(R.id.btnModeVox)
@@ -641,7 +643,20 @@ class MainActivity : Activity() {
                 },
             ),
         )
-        route.text = if (st != null) getString(R.string.route, st.route) else ""
+        route.text = if (st != null && !st.standby) getString(R.string.route, st.route) else ""
+        if (st == null || st.standby) {
+            linkQuality.visibility = View.GONE
+        } else {
+            linkQuality.visibility = View.VISIBLE
+            linkQuality.setText(
+                when {
+                    st.leAudio -> R.string.link_le
+                    st.linkHighQuality -> R.string.link_hq
+                    else -> R.string.link_narrow
+                },
+            )
+            linkQuality.setTextColor(getColor(if (st.linkHighQuality) R.color.ok else R.color.accent))
+        }
 
         renderTalk(st)
         renderConnection(st)

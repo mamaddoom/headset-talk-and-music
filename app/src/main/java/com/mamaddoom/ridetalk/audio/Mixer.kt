@@ -26,7 +26,13 @@ class PeerAudio {
  * loop off the audio hardware clock, so there are no timers to drift.
  */
 class Mixer(
+    /** Voice-call audio attributes (needed while the headset mic is in use). */
     private val sco: Boolean,
+    /**
+     * 32 kHz stereo output. False only for a classic Bluetooth call link (SCO),
+     * which carries at most 16 kHz mono; LE Audio, wired and speaker get full rate.
+     */
+    private val highQuality: Boolean,
     private val preferredOutput: AudioDeviceInfo?,
     private val peers: () -> Collection<PeerAudio>,
     private val music: JitterBuffer<ShortArray>,
@@ -57,8 +63,8 @@ class Mixer(
     @Volatile private var running = false
     private var thread: Thread? = null
 
-    val outRate = if (sco) Protocol.VOICE_RATE else Protocol.MUSIC_RATE
-    private val channels = if (sco) 1 else 2
+    val outRate = if (highQuality) Protocol.MUSIC_RATE else Protocol.VOICE_RATE
+    private val channels = if (highQuality) 2 else 1
     private val periodFrames = outRate / 50 // 20 ms
 
     fun start() {
@@ -110,8 +116,14 @@ class Mixer(
         val voicePcm = ShortArray(Protocol.VOICE_FRAME)
         val mix = FloatArray(periodFrames * channels)
         val out = ShortArray(periodFrames * channels)
-        // Anti-alias filter for 32 kHz -> 16 kHz music in SCO mode.
-        val decimLp = LowPass4(Protocol.MUSIC_RATE, 7000.0)
+        // Music squeezed into a Bluetooth call link (16 kHz mono): steep 8th-order
+        // anti-alias filter right up to the band edge, then a presence lift and
+        // gentle compression so it doesn't sound dull and stays audible over wind.
+        val decimLp1 = LowPass4(Protocol.MUSIC_RATE, 7200.0)
+        val decimLp2 = LowPass4(Protocol.MUSIC_RATE, 7200.0)
+        val presence = Biquad.peaking(Protocol.VOICE_RATE, 3200.0, 3.0, 0.8)
+        val air = Biquad.peaking(Protocol.VOICE_RATE, 6500.0, 2.5, 1.0)
+        val squeeze = Compressor(Protocol.VOICE_RATE)
         var duckGain = 1f
         val duckAttack = 1f - Math.exp(-1.0 / (0.03 * outRate)).toFloat()
         val duckRelease = 1f - Math.exp(-1.0 / (0.6 * outRate)).toFloat()
@@ -171,8 +183,9 @@ class Mixer(
                         val base = half * (Protocol.MUSIC_FRAMES / 2)
                         for (i in 0 until Protocol.MUSIC_FRAMES / 2) {
                             // Downmix to mono, low-pass, then keep every second sample.
-                            decimLp.process((pkt[i * 4] + pkt[i * 4 + 1]) / 65536f)
-                            val y = decimLp.process((pkt[i * 4 + 2] + pkt[i * 4 + 3]) / 65536f)
+                            decimLp2.process(decimLp1.process((pkt[i * 4] + pkt[i * 4 + 1]) / 65536f))
+                            val d = decimLp2.process(decimLp1.process((pkt[i * 4 + 2] + pkt[i * 4 + 3]) / 65536f))
+                            val y = squeeze.process(air.process(presence.process(d)))
                             duckGain += (duckTarget - duckGain) *
                                 (if (duckTarget < duckGain) duckAttack else duckRelease)
                             mix[base + i] += y * mv * duckGain
