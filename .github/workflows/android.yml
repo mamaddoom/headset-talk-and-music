@@ -1,0 +1,121 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_SECRET: ${{ secrets.RIDETALK_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Signing key. Preferred: repository secrets (Settings > Secrets and variables > Actions):
+      #   RIDETALK_KEYSTORE_BASE64, RIDETALK_KEYSTORE_PASSWORD, RIDETALK_KEY_ALIAS, RIDETALK_KEY_PASSWORD
+      # Without secrets, a key is generated once and kept in the Actions cache so that
+      # successive builds keep the same signature and install as updates.
+      - name: Restore cached signing key
+        if: ${{ env.HAS_SECRET != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.ridetalk-signing
+          key: ridetalk-signing-v1
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RIDETALK_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RIDETALK_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RIDETALK_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RIDETALK_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64}" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "RIDETALK_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "RIDETALK_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "RIDETALK_KEY_ALIAS=$KEY_ALIAS"
+              echo "RIDETALK_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+          else
+            dir="$HOME/.ridetalk-signing"
+            if [ ! -f "$dir/release.jks" ]; then
+              mkdir -p "$dir"
+              pass="$(openssl rand -hex 16)"
+              keytool -genkeypair -v -keystore "$dir/release.jks" -alias ridetalk \
+                -keyalg RSA -keysize 2048 -validity 10000 \
+                -storepass "$pass" -keypass "$pass" -dname "CN=RideTalk"
+              echo "$pass" > "$dir/pass"
+            fi
+            pass="$(cat "$dir/pass")"
+            echo "::add-mask::$pass"
+            {
+              echo "RIDETALK_KEYSTORE=$dir/release.jks"
+              echo "RIDETALK_KEYSTORE_PASSWORD=$pass"
+              echo "RIDETALK_KEY_ALIAS=ridetalk"
+              echo "RIDETALK_KEY_PASSWORD=$pass"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon assembleRelease lintDebug
+
+      - name: Collect APK
+        id: apk
+        run: |
+          set -euo pipefail
+          version="1.0.${GITHUB_RUN_NUMBER}"
+          out="RideTalk-${version}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$out"
+          bt="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)"
+          "${bt}apksigner" verify --print-certs "$out" | head -3
+          ls -l "$out"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RideTalk-${{ steps.apk.outputs.version }}
+          path: ${{ steps.apk.outputs.file }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.apk.outputs.version }}
+          name: RideTalk ${{ steps.apk.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: ${{ steps.apk.outputs.file }}
+          body: |
+            Build from `${{ github.ref_name }}` @ ${{ github.sha }}.
+            Download **${{ steps.apk.outputs.file }}** below on your phone and install it.
+            ساخته‌شده از شاخهٔ `${{ github.ref_name }}` — فایل APK زیر را روی گوشی دانلود و نصب کنید.

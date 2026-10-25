@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RideTalk</string>
+    <string name="notif_channel">Intercom</string>
+    <string name="notif_starting">Starting intercom…</string>
+    <string name="notif_connected">Connected: %1$s</string>
+
+    <string name="status_off">Off</string>
+    <string name="status_searching">Searching for the other rider…</string>
+    <string name="status_connected">Connected · %1$d rider(s)</string>
+    <string name="start">Start intercom</string>
+    <string name="stop">Stop</string>
+
+    <string name="sec_connection">Connection</string>
+    <string name="connection_help">1. Turn on the hotspot on one phone.\n2. Connect the other phone to that hotspot over Wi-Fi.\n3. Press Start on both phones. They find each other automatically.</string>
+    <string name="open_hotspot">Hotspot</string>
+    <string name="open_wifi">Wi-Fi</string>
+    <string name="my_ip">This phone: %1$s</string>
+    <string name="no_network">No Wi-Fi or hotspot network yet</string>
+    <string name="wifi_bound">Pinned to Wi-Fi ✓</string>
+    <string name="no_peers">No rider connected yet</string>
+    <string name="peer_line">● %1$s  ·  %2$s  ·  link %3$d%%</string>
+    <string name="talking">🔊 talking</string>
+    <string name="idle">idle</string>
+
+    <string name="sec_talk">Talk</string>
+    <string name="mode_vox">Open mic</string>
+    <string name="mode_ptt">Push-to-talk</string>
+    <string name="mute">Mute mic</string>
+    <string name="unmute">Unmute mic</string>
+    <string name="ptt_hold">HOLD TO TALK</string>
+    <string name="ptt_talk">Talk</string>
+    <string name="ptt_release">Stop talking</string>
+    <string name="transmitting">● On air</string>
+    <string name="mic_level">Mic level</string>
+    <string name="vox_sensitivity">Voice detection sensitivity</string>
+    <string name="mic_gain">Mic gain</string>
+    <string name="voice_volume">Voice volume</string>
+    <string name="headset_mic">Use headset microphone (talk)</string>
+    <string name="headset_mic_note">Bluetooth can carry the headset mic only in “call” mode (SCO), which is mono 16 kHz. While it is on, music sounds like a phone call. Turn it off for full-quality stereo music (you can still hear the others, but you won’t transmit).</string>
+    <string name="route">Audio: %1$s</string>
+    <string name="mic_unavailable">Microphone unavailable. Check the permission or end any phone call.</string>
+    <string name="headset_button_note">Headset button: mute/unmute (open mic) or talk/stop (push-to-talk). Some headsets send this button only to phone calls.</string>
+
+    <string name="sec_music">Shared music</string>
+    <string name="add_music">Choose songs</string>
+    <string name="playlist_count">%1$d song(s) in the list</string>
+    <string name="music_none">No songs selected</string>
+    <string name="music_from">Playing from %1$s</string>
+    <string name="prev">⏮</string>
+    <string name="play">▶</string>
+    <string name="pause">⏸</string>
+    <string name="next">⏭</string>
+    <string name="music_volume">Music volume</string>
+    <string name="ducking">Lower music while someone talks</string>
+    <string name="sync_delay">Sync delay on this phone: %1$d ms</string>
+    <string name="sync_note">If one rider hears the music earlier, add delay on that phone.</string>
+    <string name="remote_music_busy">The other rider is already playing music.</string>
+    <string name="music_error">These files can’t be played.</string>
+
+    <string name="sec_settings">Settings &amp; reliability</string>
+    <string name="name_hint">Your name (shown to the other rider)</string>
+    <string name="battery_opt">Battery: no limits</string>
+    <string name="autostart">Autostart / app info</string>
+    <string name="guide">For screen-off use on ColorOS (OPPO) and HyperOS (Xiaomi):\n• Battery → set RideTalk to “No restrictions” / “Allow background activity”.\n• Enable Autostart for RideTalk.\n• Lock RideTalk in the recent-apps screen.\n• OPPO hotspot: turn off “Auto-disable hotspot when idle”.\n• Xiaomi: if Wi-Fi keeps switching to mobile data, disable “Wi-Fi assistant”.</string>
+    <string name="perm_denied">Microphone permission is required to talk.</string>
+
+    <string name="route_default">phone default</string>
+    <string name="route_bt">%1$s (Bluetooth call)</string>
+    <string name="route_ble">%1$s (Bluetooth LE)</string>
+    <string name="route_a2dp">%1$s (Bluetooth music)</string>
+    <string name="route_wired">wired headset</string>
+    <string name="route_speaker">phone speaker</string>
+    <string name="route_earpiece">phone earpiece</string>
+</resources>

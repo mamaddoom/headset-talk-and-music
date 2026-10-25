@@ -1,0 +1,253 @@
+package com.mamaddoom.ridetalk
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.net.wifi.WifiManager
+import android.os.Binder
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import android.util.Log
+import android.view.KeyEvent
+
+/**
+ * Keeps the intercom alive with the screen off: foreground service, partial
+ * wake lock, low-latency Wi-Fi lock (stops Wi-Fi power save from adding
+ * 100+ ms of jitter) and a multicast lock so discovery broadcasts arrive.
+ */
+class IntercomService : Service() {
+
+    inner class LocalBinder : Binder() {
+        val service get() = this@IntercomService
+    }
+
+    private val binder = LocalBinder()
+    lateinit var engine: Engine
+        private set
+    private val listeners = LinkedHashSet<() -> Unit>()
+
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var multicastLock: WifiManager.MulticastLock? = null
+    private var session: MediaSession? = null
+    private var lastNotificationKey = ""
+
+    override fun onCreate() {
+        super.onCreate()
+        engine = Engine(applicationContext, ::onEngineState)
+        createChannel()
+    }
+
+    override fun onBind(intent: Intent?): IBinder = binder
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_START -> startIntercom()
+            ACTION_STOP -> {
+                stopIntercom()
+                return START_NOT_STICKY
+            }
+            ACTION_MUTE -> engine.setMuted(!engine.muted)
+            ACTION_PTT -> engine.setPtt(!engine.pttPressed)
+        }
+        return START_NOT_STICKY
+    }
+
+    fun addListener(l: () -> Unit) {
+        listeners += l
+    }
+
+    fun removeListener(l: () -> Unit) {
+        listeners -= l
+    }
+
+    private fun startIntercom() {
+        if (!goForeground()) {
+            stopSelf()
+            return
+        }
+        acquireLocks()
+        startMediaSession()
+        engine.start()
+    }
+
+    fun stopIntercom() {
+        engine.stop()
+        session?.release()
+        session = null
+        releaseLocks()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        lastNotificationKey = ""
+        stopSelf()
+        onEngineState()
+    }
+
+    override fun onDestroy() {
+        engine.release()
+        session?.release()
+        releaseLocks()
+        super.onDestroy()
+    }
+
+    // ------------------------------------------------------------- foreground
+
+    private fun goForeground(): Boolean {
+        val notification = buildNotification()
+        return try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                if (Permissions.hasMic(this)) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                if (Permissions.hasBluetooth(this)) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                startForeground(NOTIFICATION_ID, notification, types)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            true
+        } catch (e: Exception) {
+            // Android 12+ refuses if we were not started from the foreground.
+            Log.e(TAG, "startForeground failed", e)
+            false
+        }
+    }
+
+    private fun createChannel() {
+        val nm = getSystemService(NotificationManager::class.java)
+        val ch = NotificationChannel(CHANNEL, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW)
+        ch.setShowBadge(false)
+        nm.createNotificationChannel(ch)
+    }
+
+    private fun buildNotification(): Notification {
+        val open = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val st = if (::engine.isInitialized && engine.running) engine.state() else null
+        val text = when {
+            st == null -> getString(R.string.notif_starting)
+            st.peers.isEmpty() -> getString(R.string.status_searching)
+            else -> getString(R.string.notif_connected, st.peers.joinToString("، ") { it.name })
+        }
+        val b = Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(text)
+            .setContentIntent(open)
+            .setOngoing(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+        if (st?.ptt == true) {
+            b.addAction(action(ACTION_PTT, if (st.pttPressed) R.string.ptt_release else R.string.ptt_talk))
+        } else {
+            b.addAction(action(ACTION_MUTE, if (st?.muted == true) R.string.unmute else R.string.mute))
+        }
+        b.addAction(action(ACTION_STOP, R.string.stop))
+        if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        return b.build()
+    }
+
+    private fun action(act: String, label: Int): Notification.Action {
+        val pi = PendingIntent.getService(
+            this, act.hashCode(), Intent(this, IntercomService::class.java).setAction(act),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return Notification.Action.Builder(null, getString(label), pi).build()
+    }
+
+    private fun onEngineState() {
+        for (l in listeners.toList()) l()
+        if (!engine.running) return
+        val st = engine.state()
+        // Only touch the notification when its visible content changes.
+        val key = "${st.peers.map { it.name }}|${st.muted}|${st.ptt}|${st.pttPressed}"
+        if (key != lastNotificationKey) {
+            lastNotificationKey = key
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
+        }
+    }
+
+    // ------------------------------------------------------------- locks
+
+    @Suppress("DEPRECATION")
+    private fun acquireLocks() {
+        if (wakeLock == null) {
+            wakeLock = getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RideTalk:intercom")
+                .apply { setReferenceCounted(false); acquire() }
+        }
+        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        if (wifiLock == null) {
+            val mode = if (Build.VERSION.SDK_INT >= 29) WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            else WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            wifiLock = wifi.createWifiLock(mode, "RideTalk:wifi").apply { setReferenceCounted(false); acquire() }
+        }
+        if (multicastLock == null) {
+            multicastLock = wifi.createMulticastLock("RideTalk:discovery").apply {
+                setReferenceCounted(false); acquire()
+            }
+        }
+    }
+
+    private fun releaseLocks() {
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
+        wifiLock?.let { if (it.isHeld) it.release() }
+        wifiLock = null
+        multicastLock?.let { if (it.isHeld) it.release() }
+        multicastLock = null
+    }
+
+    // ------------------------------------------------------------- headset button
+
+    private fun startMediaSession() {
+        if (session != null) return
+        val s = MediaSession(this, "RideTalk")
+        s.setCallback(object : MediaSession.Callback() {
+            override fun onMediaButtonEvent(intent: Intent): Boolean {
+                val ev = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+                } ?: return false
+                if (ev.action != KeyEvent.ACTION_DOWN || ev.repeatCount > 0) return true
+                when (ev.keyCode) {
+                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> engine.headsetButton()
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> engine.music.next()
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> engine.music.previous()
+                    else -> return false
+                }
+                return true
+            }
+        })
+        s.setPlaybackState(
+            PlaybackState.Builder()
+                .setActions(
+                    PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT or
+                        PlaybackState.ACTION_SKIP_TO_PREVIOUS,
+                )
+                .setState(PlaybackState.STATE_PLAYING, 0, 1f)
+                .build(),
+        )
+        s.isActive = true
+        session = s
+    }
+
+    companion object {
+        private const val TAG = "IntercomService"
+        private const val CHANNEL = "intercom"
+        private const val NOTIFICATION_ID = 1
+        const val ACTION_START = "com.mamaddoom.ridetalk.START"
+        const val ACTION_STOP = "com.mamaddoom.ridetalk.STOP"
+        const val ACTION_MUTE = "com.mamaddoom.ridetalk.MUTE"
+        const val ACTION_PTT = "com.mamaddoom.ridetalk.PTT"
+    }
+}

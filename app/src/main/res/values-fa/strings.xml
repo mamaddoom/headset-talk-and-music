@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">رایدتاک</string>
+    <string name="notif_channel">اینترکام</string>
+    <string name="notif_starting">در حال روشن کردن اینترکام…</string>
+    <string name="notif_connected">متصل: %1$s</string>
+
+    <string name="status_off">خاموش</string>
+    <string name="status_searching">در جستجوی موتورسوار دیگر…</string>
+    <string name="status_connected">متصل · %1$d نفر</string>
+    <string name="start">شروع اینترکام</string>
+    <string name="stop">توقف</string>
+
+    <string name="sec_connection">اتصال</string>
+    <string name="connection_help">۱. هات‌اسپات یکی از گوشی‌ها را روشن کنید.\n۲. گوشی دیگر را با وای‌فای به آن هات‌اسپات وصل کنید.\n۳. در هر دو گوشی «شروع» را بزنید؛ خودشان همدیگر را پیدا می‌کنند.</string>
+    <string name="open_hotspot">هات‌اسپات</string>
+    <string name="open_wifi">وای‌فای</string>
+    <string name="my_ip">این گوشی: %1$s</string>
+    <string name="no_network">هنوز به وای‌فای یا هات‌اسپات وصل نیست</string>
+    <string name="wifi_bound">روی وای‌فای قفل شد ✓</string>
+    <string name="no_peers">هنوز کسی وصل نشده</string>
+    <string name="peer_line">● %1$s  ·  %2$s  ·  کیفیت لینک %3$d٪</string>
+    <string name="talking">🔊 در حال صحبت</string>
+    <string name="idle">ساکت</string>
+
+    <string name="sec_talk">مکالمه</string>
+    <string name="mode_vox">میکروفن باز</string>
+    <string name="mode_ptt">فشار برای صحبت</string>
+    <string name="mute">قطع میکروفن</string>
+    <string name="unmute">وصل میکروفن</string>
+    <string name="ptt_hold">برای صحبت نگه دارید</string>
+    <string name="ptt_talk">صحبت</string>
+    <string name="ptt_release">پایان صحبت</string>
+    <string name="transmitting">● در حال ارسال صدا</string>
+    <string name="mic_level">سطح میکروفن</string>
+    <string name="vox_sensitivity">حساسیت تشخیص صدا</string>
+    <string name="mic_gain">بلندی میکروفن</string>
+    <string name="voice_volume">بلندی صدای همراه</string>
+    <string name="headset_mic">استفاده از میکروفن هندزفری (مکالمه)</string>
+    <string name="headset_mic_note">بلوتوث میکروفن هندزفری را فقط در حالت «تماس» (SCO) منتقل می‌کند که تک‌کاناله و ۱۶ کیلوهرتز است؛ پس وقتی روشن است کیفیت موزیک مثل صدای تماس تلفنی می‌شود. برای موزیک استریو با کیفیت کامل خاموشش کنید (صدای بقیه را می‌شنوید ولی خودتان صدا نمی‌فرستید).</string>
+    <string name="route">مسیر صدا: %1$s</string>
+    <string name="mic_unavailable">میکروفن در دسترس نیست. مجوز را بررسی کنید یا اگر تماس تلفنی دارید آن را تمام کنید.</string>
+    <string name="headset_button_note">دکمهٔ هندزفری: در حالت میکروفن باز قطع/وصل میکروفن، در حالت فشار برای صحبت شروع/پایان صحبت. بعضی هندزفری‌ها این دکمه را فقط برای تماس تلفنی می‌فرستند.</string>
+
+    <string name="sec_music">موزیک مشترک</string>
+    <string name="add_music">انتخاب آهنگ‌ها</string>
+    <string name="playlist_count">%1$d آهنگ در لیست</string>
+    <string name="music_none">آهنگی انتخاب نشده</string>
+    <string name="music_from">در حال پخش از %1$s</string>
+    <string name="prev">⏮</string>
+    <string name="play">▶</string>
+    <string name="pause">⏸</string>
+    <string name="next">⏭</string>
+    <string name="music_volume">بلندی موزیک</string>
+    <string name="ducking">کم شدن موزیک هنگام صحبت</string>
+    <string name="sync_delay">تأخیر همزمانی در این گوشی: %1$d میلی‌ثانیه</string>
+    <string name="sync_note">اگر یکی از دو نفر موزیک را زودتر می‌شنود، در گوشی همان نفر تأخیر اضافه کنید.</string>
+    <string name="remote_music_busy">موتورسوار دیگر در حال پخش موزیک است.</string>
+    <string name="music_error">این فایل‌ها قابل پخش نیستند.</string>
+
+    <string name="sec_settings">تنظیمات و پایداری</string>
+    <string name="name_hint">اسم شما (به نفر دیگر نمایش داده می‌شود)</string>
+    <string name="battery_opt">باتری: بدون محدودیت</string>
+    <string name="autostart">اجرای خودکار / اطلاعات برنامه</string>
+    <string name="guide">برای کار با صفحهٔ خاموش در ColorOS (اوپو) و HyperOS (شیائومی):\n• باتری ← رایدتاک را روی «بدون محدودیت» / «اجازهٔ فعالیت در پس‌زمینه» بگذارید.\n• «اجرای خودکار» (Autostart) رایدتاک را روشن کنید.\n• رایدتاک را در صفحهٔ برنامه‌های اخیر قفل کنید.\n• هات‌اسپات اوپو: گزینهٔ «خاموش شدن خودکار هات‌اسپات» را خاموش کنید.\n• شیائومی: اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای» را خاموش کنید.</string>
+    <string name="perm_denied">برای صحبت کردن مجوز میکروفن لازم است.</string>
+
+    <string name="route_default">پیش‌فرض گوشی</string>
+    <string name="route_bt">%1$s (بلوتوث تماس)</string>
+    <string name="route_ble">%1$s (بلوتوث LE)</string>
+    <string name="route_a2dp">%1$s (بلوتوث موزیک)</string>
+    <string name="route_wired">هندزفری سیمی</string>
+    <string name="route_speaker">بلندگوی گوشی</string>
+    <string name="route_earpiece">اسپیکر مکالمهٔ گوشی</string>
+</resources>
