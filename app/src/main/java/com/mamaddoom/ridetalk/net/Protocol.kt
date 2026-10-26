@@ -28,6 +28,12 @@ object Protocol {
     const val TYPE_VOICE: Byte = 2
     const val TYPE_MUSIC: Byte = 3
     const val TYPE_BYE: Byte = 4
+    /**
+     * Header-only packet sent every 40 ms while nothing else is flowing: keeps
+     * both Wi-Fi radios out of power-save, which otherwise holds incoming
+     * packets for 100–300 ms and makes the first words after a pause late.
+     */
+    const val TYPE_KEEPALIVE: Byte = 5
 
     /** Voice: 16 kHz mono, 20 ms frames. */
     const val VOICE_RATE = 16000
@@ -111,6 +117,11 @@ object Protocol {
         val out = ShortArray(count)
         buf.asShortBuffer().get(out)
         return out
+    }
+
+    fun encodeKeepalive(buf: ByteBuffer, sender: Int, seq: Int): Int {
+        writeHeader(buf, TYPE_KEEPALIVE, sender, seq)
+        return HEADER
     }
 
     fun encodeBye(buf: ByteBuffer, sender: Int, seq: Int): Int {

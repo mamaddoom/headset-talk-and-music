@@ -45,17 +45,6 @@ class DspTest {
     }
 
     @Test
-    fun voxHangoverKeepsGateOpen() {
-        val g = VoxGate(hangoverFrames = 3)
-        g.thresholdDb = -40f
-        assertTrue(g.update(-20f))
-        assertTrue(g.update(-80f))
-        assertTrue(g.update(-80f))
-        assertTrue(g.update(-80f))
-        assertTrue(!g.update(-80f))
-    }
-
-    @Test
     fun softClipIsTransparentForNormalLevelsAndBounded() {
         assertEquals((0.5f * 32767).toInt().toShort(), Pcm.toShort(0.5f))
         assertTrue(Pcm.toShort(5f) <= Short.MAX_VALUE)

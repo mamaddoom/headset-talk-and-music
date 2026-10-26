@@ -196,6 +196,17 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
     val isNarrowband: Boolean
         get() = outputDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
 
+    /** Sound comes out of the phone itself, where speaker-to-mic feedback loops are possible. */
+    val isLoudspeaker: Boolean
+        get() = when (outputDevice?.type) {
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> true
+            null -> !bluetoothHeadsetPresent() && am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).none {
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET || it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET
+            }
+            else -> false
+        }
+
     val isLeAudio: Boolean
         get() = outputDevice?.type.let { it == TYPE_BLE_HEADSET || it == TYPE_BLE_SPEAKER }
 

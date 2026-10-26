@@ -34,7 +34,7 @@ class Settings(context: Context) {
 
     /** Music volume in percent (0..100). */
     var musicVolume: Int
-        get() = p.getInt("musicVol", 60)
+        get() = p.getInt("musicVol", 85)
         set(v) = p.edit().putInt("musicVol", v).apply()
 
     var ducking: Boolean
@@ -126,6 +126,4 @@ class Settings(context: Context) {
     val monoOutput: Boolean
         get() = role == Role.MUSIC
 
-    /** Maps sensitivity 0..100 to a VOX threshold of -25..-55 dBFS. */
-    fun voxThresholdDb(): Float = -25f - voxSensitivity * 0.3f
 }

@@ -39,6 +39,7 @@ class IntercomService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var wifiPerfLock: WifiManager.WifiLock? = null
     private var multicastLock: WifiManager.MulticastLock? = null
     private var session: MediaSession? = null
     private var lastNotificationKey = ""
@@ -243,10 +244,16 @@ class IntercomService : Service() {
                 .apply { setReferenceCounted(false); acquire() }
         }
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (wifiLock == null) {
-            val mode = if (Build.VERSION.SDK_INT >= 29) WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-            else WifiManager.WIFI_MODE_FULL_HIGH_PERF
-            wifiLock = wifi.createWifiLock(mode, "RideTalk:wifi").apply { setReferenceCounted(false); acquire() }
+        if (wifiLock == null && Build.VERSION.SDK_INT >= 29) {
+            // Low-latency mode applies while the screen is on and we are in front...
+            wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "RideTalk:wifi")
+                .apply { setReferenceCounted(false); acquire() }
+        }
+        if (wifiPerfLock == null) {
+            // ...high-performance (no power save) still helps with the screen off on many phones.
+            // The 40 ms keepalive covers the rest.
+            wifiPerfLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "RideTalk:wifi-perf")
+                .apply { setReferenceCounted(false); acquire() }
         }
         if (multicastLock == null) {
             multicastLock = wifi.createMulticastLock("RideTalk:discovery").apply {
@@ -260,6 +267,8 @@ class IntercomService : Service() {
         wakeLock = null
         wifiLock?.let { if (it.isHeld) it.release() }
         wifiLock = null
+        wifiPerfLock?.let { if (it.isHeld) it.release() }
+        wifiPerfLock = null
         multicastLock?.let { if (it.isHeld) it.release() }
         multicastLock = null
     }

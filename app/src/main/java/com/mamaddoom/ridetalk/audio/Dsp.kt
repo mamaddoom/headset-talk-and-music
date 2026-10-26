@@ -8,11 +8,20 @@ import kotlin.math.sqrt
 
 /** Second-order IIR filter (RBJ cookbook), transposed direct form II. */
 class Biquad private constructor(
-    private val b0: Float, private val b1: Float, private val b2: Float,
-    private val a1: Float, private val a2: Float,
+    private var b0: Float, private var b1: Float, private var b2: Float,
+    private var a1: Float, private var a2: Float,
 ) {
     private var z1 = 0f
     private var z2 = 0f
+
+    /**
+     * Re-tunes this filter as a high-pass at [freq] while keeping its state, so
+     * an adaptive cut-off (wind guard) can move frame by frame without clicks.
+     */
+    fun retuneHighPass(rate: Int, freq: Double, q: Double = Q) {
+        val f = highPass(rate, freq, q)
+        b0 = f.b0; b1 = f.b1; b2 = f.b2; a1 = f.a1; a2 = f.a2
+    }
 
     fun process(x: Float): Float {
         val y = b0 * x + z1
@@ -147,34 +156,6 @@ class StreamResampler(inRate: Int, outRate: Int, private val channels: Int) {
     fun reset() {
         hasPrev = false
         pos = 0.0
-    }
-}
-
-/** Voice-activity gate with hangover and pre-roll, driven by frame RMS. */
-class VoxGate(private val hangoverFrames: Int) {
-    var thresholdDb = -38f
-    private var hang = 0
-
-    /** Returns true if this frame should be transmitted. */
-    fun update(levelDb: Float): Boolean {
-        if (levelDb >= thresholdDb) {
-            hang = hangoverFrames
-            return true
-        }
-        if (hang > 0) {
-            hang--
-            return true
-        }
-        return false
-    }
-
-    /** Keeps the gate open for at least [frames] more frames (e.g. right after tap-to-talk). */
-    fun hold(frames: Int) {
-        hang = maxOf(hang, frames)
-    }
-
-    fun reset() {
-        hang = 0
     }
 }
 

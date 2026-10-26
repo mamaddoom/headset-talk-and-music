@@ -10,7 +10,9 @@ import com.mamaddoom.ridetalk.net.Protocol
 
 /** Per-remote-rider receive state. Created by the engine, read by the mixer. */
 class PeerAudio {
-    val voice = JitterBuffer<ByteArray>(minTarget = 2, maxTarget = 8)
+    val voice = JitterBuffer<ByteArray>(minTarget = 2, maxTarget = 15)
+    /** Receive-side leveler: brings every rider to the same loudness (older senders, quiet mics). */
+    val leveler = SpeechAgc(targetDb = -18f, maxGainDb = 9f, minGainDb = -6f)
     val decoder = VoiceDecoder()
     /** Last voice sample, for seamless 16 -> 32 kHz upsampling across frames. */
     var lastSample = 0f
@@ -147,12 +149,13 @@ class Mixer(
                 var remote = false
 
                 // --- voice from every peer ---
-                val vv = voiceVolume
+                val vvBase = voiceVolume
                 for (p in peers()) {
                     if (!pullVoice(p, voicePcm)) continue
                     val level = Pcm.rmsDb(voicePcm)
                     p.levelDb = level
                     if (level > -48f) p.lastVoiceAtMs = now
+                    val vv = vvBase * p.leveler.update(level, level > -45f)
                     if (now - p.lastVoiceAtMs < 400) {
                         anyTalking = true
                         remote = true
@@ -277,7 +280,8 @@ class Mixer(
 
     private companion object {
         const val TAG = "Mixer"
-        const val DUCK_LEVEL = 0.25f
+        /** Music under speech: -9 dB keeps the song present but the voice on top. */
+        const val DUCK_LEVEL = 0.35f
         const val MAX_PLC_FRAMES = 3
     }
 }

@@ -113,7 +113,7 @@ class Engine(
     @Volatile private var peerAudioList: List<PeerAudio> = emptyList()
     private val peerAudios = { peerAudioList }
     private val musicBuffer = JitterBuffer<ShortArray>(
-        minTarget = musicTarget(), maxTarget = 60, capacity = 128, shrinkAfter = 3000,
+        minTarget = musicTarget(), maxTarget = 80, capacity = 128, periodMs = 10.0,
     )
     @Volatile private var musicSource = 0
     @Volatile private var musicSourceAtMs = 0L
@@ -131,6 +131,8 @@ class Engine(
     private var savedPlaylist: List<Uri> = emptyList()
     private var savedIndex = -1
     private val beaconBuf = ByteBuffer.allocate(Protocol.MAX_PACKET)
+    private val keepaliveBuf = ByteBuffer.allocate(Protocol.HEADER)
+    private var keepaliveSeq = 0
     private var voiceSeq = 0
     private var beaconSeq = 0
 
@@ -193,6 +195,7 @@ class Engine(
         transport.start()
         reconcileAudio()
         ctl.post(tick)
+        ctl.post(keepalive)
         notifyState()
     }
 
@@ -523,7 +526,7 @@ class Engine(
     private fun applyCaptureSettings(c: VoiceCapture) {
         // A tap-to-talk session is always voice-activated and never muted.
         c.mode = if (settings.ptt && !talkSession) VoiceCapture.Mode.PTT else VoiceCapture.Mode.VOX
-        c.voxThresholdDb = settings.voxThresholdDb()
+        c.vadSensitivity = settings.voxSensitivity
         c.gain = settings.micGain / 100f
         c.muted = muted && !talkSession
         c.pttPressed = pttPressed
@@ -554,6 +557,19 @@ class Engine(
             checkAutoStop()
             notifyState()
             ctl.postDelayed(this, 1000)
+        }
+    }
+
+    /** Keeps the Wi-Fi radios awake while the audio path is up but nothing else is being sent. */
+    private val keepalive = object : Runnable {
+        override fun run() {
+            if (!running) return
+            val quiet = !transmitting && !music.playing && appCapture == null
+            if (audioMode != AudioMode.OFF && quiet && peers.isNotEmpty()) {
+                val len = Protocol.encodeKeepalive(keepaliveBuf, myId, keepaliveSeq++)
+                transport.sendToPeers(keepaliveBuf.array(), len)
+            }
+            ctl.postDelayed(this, KEEPALIVE_MS)
         }
     }
 
@@ -746,7 +762,9 @@ class Engine(
         if (changed) notifyState()
     }
 
-    override fun isFarEndActive() = mixer?.remoteTalking == true
+    // Feedback loops only happen through the phone's own speaker; with headsets the
+    // mic must stay fully open even while others talk.
+    override fun isFarEndActive() = mixer?.remoteTalking == true && router.isLoudspeaker
 
     override fun onMusicPacket(pcm: ShortArray) = sendMusic(pcm, playLocally = true)
 
@@ -874,6 +892,7 @@ class Engine(
         const val AUTO_STOP_MS = 30 * 60_000L
         const val TALK_HOLD_FRAMES = 150 // 3 s
         const val MIC_TEST_MS = 6000L
+        const val KEEPALIVE_MS = 40L
         const val TALK_IDLE_MS = 2500L
         const val TALK_MIN_MS = 4000L
     }

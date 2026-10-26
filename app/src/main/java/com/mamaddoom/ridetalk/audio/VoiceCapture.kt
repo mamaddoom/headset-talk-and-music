@@ -7,7 +7,6 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AudioEffect
-import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Process
 import android.util.Log
@@ -36,7 +35,11 @@ class VoiceCapture(
     @Volatile var muted = false
     @Volatile var pttPressed = false
     @Volatile var gain = 1f
-    @Volatile var voxThresholdDb = -40f
+    /** Speech detector sensitivity 0..100 (higher opens on softer speech). */
+    @Volatile var vadSensitivity = 55
+    /** 0..1 how windy it is right now (for the UI). */
+    @Volatile var windiness = 0f
+        private set
     /** Noise reduction 0..100: drives the spectral denoiser and the wind high-pass. */
     @Volatile var noiseReduction = 60
     /**
@@ -100,12 +103,14 @@ class VoiceCapture(
 
         val raw = ShortArray(frame)
         val f = FloatArray(frame)
-        val denoiser = VoiceDenoiser()
-        var hpfStrength = -1
-        var hpf = Biquad.highPass(Protocol.VOICE_RATE, 120.0)
-        val gate = VoxGate(hangoverFrames = 40) // 800 ms
-        // Two frames of pre-roll so VOX doesn't chop the first syllable.
-        val preRoll = arrayOf(ShortArray(frame), ShortArray(frame))
+        // Processing chain: wind guard -> spectral denoiser -> speech detector -> AGC -> limiter.
+        val wind = WindGuard(Protocol.VOICE_RATE)
+        val denoiser = VoiceDenoiser(Protocol.VOICE_RATE)
+        val vad = SpeechDetector(Protocol.VOICE_RATE)
+        val agc = SpeechAgc(targetDb = -20f, maxGainDb = 15f)
+        var expander = 1f
+        // Pre-roll so the detector's confirmation delay doesn't chop the first syllable.
+        val preRoll = Array(PRE_ROLL) { ShortArray(frame) }
         var preRollCount = 0
         var wasSending = false
         var meterTick = 0
@@ -122,49 +127,50 @@ class VoiceCapture(
                 if (!running) break
 
                 val nr = noiseReduction
-                if (nr != hpfStrength) {
-                    // Wind rumble and engine drone: 100 Hz cut-off, up to 220 Hz at full strength.
-                    hpf = Biquad.highPass(Protocol.VOICE_RATE, 100.0 + nr * 1.2)
-                    hpfStrength = nr
-                    denoiser.strength = nr
-                }
-                val g = gain
-                for (i in 0 until frame) f[i] = hpf.process(raw[i] / 32768f)
+                denoiser.strength = nr
+                vad.sensitivity = vadSensitivity
+                for (i in 0 until frame) f[i] = raw[i] / 32768f
+                wind.process(f, frame, nr)
                 denoiser.process(f, frame)
-                for (i in 0 until frame) f[i] *= g
-                var level = Pcm.rmsDb(f, frame)
-                if (antiFeedback && mode == Mode.VOX && level < voxThresholdDb + 12f && sink.isFarEndActive()) {
-                    for (i in 0 until frame) f[i] *= 0.1f
-                    level -= 20f
-                }
-                val out = ShortArray(frame)
-                for (i in 0 until frame) out[i] = Pcm.toShort(f[i])
+                val cleanDb = Pcm.rmsDb(f, frame)
 
                 val hold = holdOpenFrames
                 if (hold > 0) {
-                    gate.hold(hold)
+                    vad.hold(hold)
                     holdOpenFrames = 0
                 }
+                var speech = vad.update(denoiser.presence, denoiser.snrDb, cleanDb, f, frame)
+                // Anti-feedback (loudspeaker only): while someone else talks, only clear local speech passes.
+                if (antiFeedback && sink.isFarEndActive() && vad.score < FEEDBACK_SCORE) speech = false
+
+                // Level: AGC learns from speech only; between words the expander pulls residual noise down.
+                val g = agc.update(cleanDb, speech) * gain
+                expander += ((if (speech) 1f else EXPANDER_FLOOR) - expander) * (if (speech) 0.5f else 0.1f)
+                val out = ShortArray(frame)
+                val total = g * expander
+                for (i in 0 until frame) out[i] = Pcm.toShort(f[i] * total)
+                val level = cleanDb + 20f * kotlin.math.log10(total.coerceAtLeast(1e-4f))
+
                 val send = !muted && when (mode) {
                     Mode.PTT -> pttPressed
-                    Mode.VOX -> gate.also { it.thresholdDb = voxThresholdDb }.update(level)
+                    Mode.VOX -> speech
                 }
                 if (send) {
                     if (!wasSending && mode == Mode.VOX) {
-                        for (k in preRollCount downTo 1) sink.onVoiceFrame(preRoll[(2 - k)].copyOf())
+                        for (k in preRollCount downTo 1) sink.onVoiceFrame(preRoll[PRE_ROLL - k].copyOf())
                     }
                     sink.onVoiceFrame(out)
                     preRollCount = 0
                 } else {
-                    // Shift pre-roll window.
-                    System.arraycopy(preRoll[1], 0, preRoll[0], 0, frame)
-                    System.arraycopy(out, 0, preRoll[1], 0, frame)
-                    if (preRollCount < 2) preRollCount++
-                    if (mode == Mode.PTT || muted) gate.reset()
+                    for (k in 0 until PRE_ROLL - 1) System.arraycopy(preRoll[k + 1], 0, preRoll[k], 0, frame)
+                    System.arraycopy(out, 0, preRoll[PRE_ROLL - 1], 0, frame)
+                    if (preRollCount < PRE_ROLL) preRollCount++
+                    if (mode == Mode.PTT || muted) vad.reset()
                 }
                 wasSending = send
                 if (++meterTick >= 5) {
                     meterTick = 0
+                    windiness = wind.windiness
                     sink.onMicLevel(level, send)
                 }
             }
@@ -185,7 +191,7 @@ class VoiceCapture(
         try {
             if (AcousticEchoCanceler.isAvailable()) AcousticEchoCanceler.create(session)?.let { effects.add(it) }
             if (NoiseSuppressor.isAvailable()) NoiseSuppressor.create(session)?.let { effects.add(it) }
-            if (AutomaticGainControl.isAvailable()) AutomaticGainControl.create(session)?.let { effects.add(it) }
+            // No platform AGC: it pumps wind noise up in pauses. Our speech-only AGC replaces it.
             for (e in effects) e.enabled = true
         } catch (e: Exception) {
             Log.w(TAG, "audio effects unavailable", e)
@@ -204,5 +210,8 @@ class VoiceCapture(
 
     private companion object {
         const val TAG = "VoiceCapture"
+        const val PRE_ROLL = 4 // 80 ms, covers the detector's 60 ms confirmation
+        const val EXPANDER_FLOOR = 0.25f // -12 dB between words (push-to-talk / open channel)
+        const val FEEDBACK_SCORE = 0.7f
     }
 }
