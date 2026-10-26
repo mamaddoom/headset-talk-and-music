@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#0F1317</color>
-    <color name="card">#1A2027</color>
-    <color name="card_stroke">#29323C</color>
-    <color name="text">#ECEFF1</color>
-    <color name="text_dim">#90A4AE</color>
-    <color name="accent">#FFB300</color>
-    <color name="accent_dark">#2B2210</color>
-    <color name="ok">#43A047</color>
-    <color name="danger">#E53935</color>
-    <color name="button">#26303A</color>
-    <color name="button_pressed">#34414E</color>
+    <!-- Dark, low-glare palette for riding; amber accent visible in sunlight. -->
+    <color name="bg">#0B0F14</color>
+    <color name="surface">#141A22</color>
+    <color name="surface2">#1C2430</color>
+    <color name="stroke">#263142</color>
+    <color name="text">#E9EEF3</color>
+    <color name="text_dim">#8794A6</color>
+    <color name="accent">#FFB020</color>
+    <color name="accent_mid">#B37A12</color>
+    <color name="accent_dark">#2E230C</color>
+    <color name="ok">#34C759</color>
+    <color name="danger">#FF453A</color>
+    <color name="danger_dark">#4A1714</color>
+    <color name="ripple">#33FFFFFF</color>
+    <!-- kept for older drawables -->
+    <color name="card">#141A22</color>
+    <color name="card_stroke">#263142</color>
+    <color name="button">#1C2430</color>
+    <color name="button_pressed">#263142</color>
 </resources>

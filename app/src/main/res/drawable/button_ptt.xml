@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_activated="true">
-        <shape><solid android:color="@color/accent" /><corners android:radius="24dp" /></shape>
-    </item>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/ripple">
     <item>
-        <shape>
-            <solid android:color="@color/accent_dark" />
-            <stroke android:width="2dp" android:color="@color/accent" />
-            <corners android:radius="24dp" />
-        </shape>
+        <selector android:enterFadeDuration="200" android:exitFadeDuration="200">
+            <item android:state_activated="true">
+                <shape><solid android:color="@color/accent" /><corners android:radius="28dp" /></shape>
+            </item>
+            <item>
+                <shape><solid android:color="@color/accent_dark" /><stroke android:width="2dp" android:color="@color/accent" /><corners android:radius="28dp" /></shape>
+            </item>
+        </selector>
     </item>
-</selector>
+</ripple>

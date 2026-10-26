@@ -56,7 +56,7 @@
     <string name="remote_music_busy">The other rider is already playing music.</string>
     <string name="music_error">These files can’t be played.</string>
 
-    <string name="sec_settings">Settings &amp; reliability</string>
+    <string name="sec_settings">Battery &amp; reliability</string>
     <string name="name_hint">Your name (shown to the other rider)</string>
     <string name="battery_opt">Battery: no limits</string>
     <string name="guide">For reliable use with the screen off:\n• Battery: set RideTalk to “No restrictions” / allow background activity.\n• If your phone has an “Autostart” or “Background apps” setting, allow RideTalk there (App settings).\n• Lock RideTalk in the recent-apps screen so the system does not close it.\n• Turn off “turn off hotspot automatically when idle” on the hotspot phone.\n• If Wi-Fi keeps switching to mobile data, disable the phone’s Wi-Fi assistant / smart network switch.</string>
@@ -163,4 +163,21 @@
     <string name="mic_test">🎙 Mic test</string>
     <string name="mic_test_running">🎙 Speak now… %1$d</string>
     <string name="mic_test_note">Plays your own voice back to you for 6 seconds, on this phone only — to check the mic when nobody else is connected. During a ride your own voice is never played back.</string>
+
+    <string name="tab_home">Intercom</string>
+    <string name="tab_music">Music</string>
+    <string name="tab_settings">Settings</string>
+    <string name="sec_peers">Riders</string>
+    <string name="sec_link">Connection</string>
+    <string name="sec_levels">Volume &amp; sync</string>
+    <string name="sec_audio">Sound</string>
+    <string name="sec_network">Group &amp; network</string>
+    <string name="volume_button">🔊 Volume</string>
+    <string name="music_on_music_phone">🎵 Music plays on your music phone.</string>
+    <string name="talk_off">Intercom off</string>
+    <string name="talk_open">Mic open\ntap to mute</string>
+    <string name="talk_muted">Mic muted\ntap to unmute</string>
+    <string name="talk_on_air">● Talking</string>
+    <string name="talk_music_phone">Music only</string>
+    <string name="peer_talking">talking</string>
 </resources>

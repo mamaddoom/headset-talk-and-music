@@ -56,7 +56,7 @@
     <string name="remote_music_busy">موتورسوار دیگر در حال پخش موزیک است.</string>
     <string name="music_error">این فایل‌ها قابل پخش نیستند.</string>
 
-    <string name="sec_settings">تنظیمات و پایداری</string>
+    <string name="sec_settings">باتری و پایداری</string>
     <string name="name_hint">اسم شما (به نفر دیگر نمایش داده می‌شود)</string>
     <string name="battery_opt">باتری: بدون محدودیت</string>
     <string name="guide">برای کار مطمئن با صفحهٔ خاموش:\n• باتری: رایدتاک را روی «بدون محدودیت» بگذارید / اجازهٔ فعالیت در پس‌زمینه بدهید.\n• اگر گوشی شما گزینهٔ «اجرای خودکار» یا «برنامه‌های پس‌زمینه» دارد، آن را برای رایدتاک روشن کنید (دکمهٔ تنظیمات برنامه).\n• رایدتاک را در صفحهٔ برنامه‌های اخیر قفل کنید تا سیستم آن را نبندد.\n• در گوشی هات‌اسپات، «خاموش شدن خودکار هات‌اسپات» را غیرفعال کنید.\n• اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای / سوییچ هوشمند شبکه» را خاموش کنید.</string>
@@ -163,4 +163,21 @@
     <string name="mic_test">🎙 تست میکروفن</string>
     <string name="mic_test_running">🎙 حالا صحبت کنید… %1$d</string>
     <string name="mic_test_note">صدای خودتان را ۶ ثانیه، فقط روی همین گوشی، در گوشتان پخش می‌کند تا وقتی کسی وصل نیست بتوانید میکروفن را امتحان کنید. موقع سفر صدای خودتان هیچ‌وقت پخش نمی‌شود.</string>
+
+    <string name="tab_home">اینترکام</string>
+    <string name="tab_music">موزیک</string>
+    <string name="tab_settings">تنظیمات</string>
+    <string name="sec_peers">همراه‌ها</string>
+    <string name="sec_link">اتصال</string>
+    <string name="sec_levels">بلندی و همزمانی</string>
+    <string name="sec_audio">صدا</string>
+    <string name="sec_network">گروه و شبکه</string>
+    <string name="volume_button">🔊 بلندی صدا</string>
+    <string name="music_on_music_phone">🎵 موزیک روی گوشی موزیک شما پخش می‌شود.</string>
+    <string name="talk_off">اینترکام خاموش</string>
+    <string name="talk_open">میکروفن باز\nبرای قطع بزنید</string>
+    <string name="talk_muted">میکروفن قطع\nبرای وصل بزنید</string>
+    <string name="talk_on_air">● در حال صحبت</string>
+    <string name="talk_music_phone">فقط موزیک</string>
+    <string name="peer_talking">در حال صحبت</string>
 </resources>
