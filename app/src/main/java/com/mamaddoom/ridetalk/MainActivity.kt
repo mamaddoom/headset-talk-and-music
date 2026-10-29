@@ -58,6 +58,8 @@ class MainActivity : Activity() {
     // Header / navigation
     private lateinit var status: TextView
     private lateinit var statusDot: View
+    private lateinit var headerArt: View
+    private var headerBob: ObjectAnimator? = null
     private lateinit var pages: List<View>
     private lateinit var navItems: List<View>
     private lateinit var navIcons: List<TextView>
@@ -206,6 +208,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         statusPulse?.cancel()
+        headerBob?.cancel()
         service?.removeListener(stateListener)
         service = null
         unbindService(connection)
@@ -215,6 +218,7 @@ class MainActivity : Activity() {
     private fun bindViews() {
         status = findViewById(R.id.status)
         statusDot = findViewById(R.id.statusDot)
+        headerArt = findViewById(R.id.headerArt)
         pages = listOf(R.id.pageHome, R.id.pageMusic, R.id.pageSettings).map { findViewById(it) }
         navItems = listOf(R.id.navHome, R.id.navMusic, R.id.navSettings).map { findViewById(it) }
         navIcons = listOf(R.id.navHomeIcon, R.id.navMusicIcon, R.id.navSettingsIcon).map { findViewById(it) }
@@ -886,6 +890,23 @@ class MainActivity : Activity() {
             statusPulse?.cancel()
             statusPulse = null
             statusDot.alpha = 1f
+        }
+        // The helmet rocks gently, like riding, while someone is connected.
+        val riding = st != null && st.peers.isNotEmpty()
+        if (riding && headerBob == null) {
+            headerArt.pivotX = headerArt.width / 2f
+            headerArt.pivotY = headerArt.height.toFloat()
+            headerBob = ObjectAnimator.ofFloat(headerArt, View.ROTATION, -5f, 5f).apply {
+                duration = 1400
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                start()
+            }
+        } else if (!riding && headerBob != null) {
+            headerBob?.cancel()
+            headerBob = null
+            headerArt.animate().rotation(0f).setDuration(300).start()
         }
     }
 

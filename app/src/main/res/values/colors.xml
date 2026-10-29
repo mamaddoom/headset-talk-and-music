@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark, low-glare palette for riding; amber accent visible in sunlight. -->
-    <color name="bg">#0B0F14</color>
-    <color name="surface">#141A22</color>
-    <color name="surface2">#1C2430</color>
-    <color name="stroke">#263142</color>
-    <color name="text">#E9EEF3</color>
-    <color name="text_dim">#8794A6</color>
-    <color name="accent">#FFB020</color>
-    <color name="accent_mid">#B37A12</color>
-    <color name="accent_dark">#2E230C</color>
+    <!-- Black and pink, like the helmet: dark and low-glare for riding, pink stands out in sunlight. -->
+    <color name="bg">#0A0A0D</color>
+    <color name="surface">#15141A</color>
+    <color name="surface2">#1F1D26</color>
+    <color name="stroke">#2E2B38</color>
+    <color name="text">#F4EEF2</color>
+    <color name="text_dim">#9A90A0</color>
+    <color name="accent">#FF4F9E</color>
+    <color name="accent_mid">#B23772</color>
+    <color name="accent_dark">#3A1428</color>
     <color name="ok">#34C759</color>
     <color name="danger">#FF453A</color>
     <color name="danger_dark">#4A1714</color>
-    <color name="ripple">#33FFFFFF</color>
+    <color name="ripple">#33FF4F9E</color>
     <!-- kept for older drawables -->
     <color name="card">#141A22</color>
     <color name="card_stroke">#263142</color>

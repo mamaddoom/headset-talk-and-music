@@ -576,7 +576,8 @@ class Engine(
         m.duckingEnabled = settings.ducking
         m.mono = settings.monoOutput
         m.rxDenoise = settings.rxDenoise
-        m.echoGuard = settings.echoGuard
+        // The mic test plays our own voice back on purpose.
+        m.echoGuard = settings.echoGuard && !micTesting
     }
 
     /** 100 ms base buffer plus the user's sync offset, in 20 ms packets. */
@@ -678,6 +679,7 @@ class Engine(
         loopback.voice.clear()
         loopback.decoder.reset()
         capture?.antiFeedback = false // we *want* to hear ourselves now
+        mixer?.echoGuard = false
         updatePeerAddresses()
         if (tapToTalk && !talkSession) startTalk() else reconcileAudio()
         ctl.postDelayed(endMicTest, MIC_TEST_MS)
@@ -687,6 +689,7 @@ class Engine(
     private val endMicTest = Runnable {
         micTestUntilMs = 0
         capture?.let { applyCaptureSettings(it) }
+        mixer?.let { applyMixerSettings(it) }
         updatePeerAddresses()
         notifyState()
     }
