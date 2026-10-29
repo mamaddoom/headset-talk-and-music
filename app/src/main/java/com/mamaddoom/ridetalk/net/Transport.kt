@@ -39,6 +39,9 @@ class Transport(
     interface Listener {
         /** Called on the receive thread. [payload] is positioned after the header. */
         fun onPacket(header: Protocol.Header, from: InetSocketAddress, payload: ByteBuffer)
+
+        /** The Wi-Fi network appeared, changed or went away. */
+        fun onNetworkChanged() {}
     }
 
     private val cm = context.getSystemService(ConnectivityManager::class.java)
@@ -61,18 +64,36 @@ class Transport(
 
     val boundToWifi get() = wifiNetwork != null
 
+    /** Signal of the hotspot we are joined to (dBm), and its band (MHz); null on the hotspot itself. */
+    @Volatile var wifiRssi: Int? = null
+        private set
+    @Volatile var wifiMhz: Int? = null
+        private set
+
     private val wifiCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             if (wifiNetwork != network) {
                 wifiNetwork = network
                 reopen()
+                listener.onNetworkChanged()
             }
         }
 
         override fun onLost(network: Network) {
             if (wifiNetwork == network) {
                 wifiNetwork = null
+                wifiRssi = null
+                wifiMhz = null
                 reopen()
+                listener.onNetworkChanged()
+            }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            if (network != wifiNetwork || android.os.Build.VERSION.SDK_INT < 29) return
+            (caps.transportInfo as? android.net.wifi.WifiInfo)?.let {
+                wifiRssi = it.rssi.takeIf { r -> r > -127 }
+                wifiMhz = it.frequency.takeIf { f -> f > 0 }
             }
         }
     }

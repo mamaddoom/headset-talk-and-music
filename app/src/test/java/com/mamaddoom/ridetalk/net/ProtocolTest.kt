@@ -27,41 +27,43 @@ class ProtocolTest {
     }
 
     @Test
-    fun voiceBytesRoundTrip() {
+    fun redundancyContainerRoundTrips() {
         val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
-        val opus = ByteArray(57) { it.toByte() }
-        val len = Protocol.encodeBytes(buf, Protocol.TYPE_VOICE, -5, Int.MAX_VALUE, opus, opus.size)
-        assertEquals(Protocol.HEADER + 57, len)
+        val frames = listOf(ByteArray(61) { 1 }, ByteArray(58) { 2 }, ByteArray(64) { 3 })
+        val len = Protocol.encodeFrames(buf, Protocol.TYPE_VOICE, -5, Int.MAX_VALUE, frames)
         val rx = wrap(buf, len)
         val h = Protocol.readHeader(rx)!!
         assertEquals(-5, h.sender)
         assertEquals(Int.MAX_VALUE, h.seq)
-        assertArrayEquals(opus, Protocol.decodeBytes(rx))
+        val got = Protocol.decodeFrames(rx)!!
+        assertEquals(3, got.size)
+        for (k in frames.indices) assertArrayEquals(frames[k], got[k])
     }
 
     @Test
-    fun musicPacketFitsOneMtuAndRoundTrips() {
+    fun containerNeverOverflowsADatagram() {
         val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
-        val pcm = ShortArray(Protocol.MUSIC_SAMPLES) { (it * 37 - 9000).toShort() }
-        val len = Protocol.encodePcm(buf, Protocol.TYPE_MUSIC, 9, 3, pcm, pcm.size)
-        assertTrue("music packet must fit a 1472-byte UDP payload", len <= 1472)
+        // Two maximum-size music frames fit; a third does not and is left out.
+        val frames = List(3) { ByteArray(640) { 9 } }
+        val len = Protocol.encodeFrames(buf, Protocol.TYPE_MUSIC, 1, 1, frames)
+        assertTrue("datagram is $len bytes", len + 16 <= 1472)
         val rx = wrap(buf, len)
         Protocol.readHeader(rx)!!
-        assertArrayEquals(pcm, Protocol.decodePcm(rx, Protocol.MUSIC_SAMPLES))
+        assertEquals("newest frames kept", 2, Protocol.decodeFrames(rx)!!.size)
     }
 
     @Test
-    fun rejectsForeignAndTruncatedPackets() {
+    fun rejectsForeignTruncatedAndOldVersionPackets() {
         assertNull(Protocol.readHeader(ByteBuffer.wrap("hello world!".toByteArray())))
-        assertNull(Protocol.readHeader(ByteBuffer.wrap(byteArrayOf('R'.code.toByte(), 'T'.code.toByte(), 1))))
+        assertNull(Protocol.readHeader(ByteBuffer.wrap(byteArrayOf('R'.code.toByte(), 'T'.code.toByte(), 2))))
         val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
-        val len = Protocol.encodePcm(buf, Protocol.TYPE_MUSIC, 1, 1, ShortArray(10), 10)
-        val rx = wrap(buf, len)
-        assertNotNull(Protocol.readHeader(rx))
-        assertNull("short payload must not decode", Protocol.decodePcm(rx, Protocol.MUSIC_SAMPLES))
-        // Wrong version
-        val bad = buf.array().copyOf(len).also { it[2] = 99 }
-        assertNull(Protocol.readHeader(ByteBuffer.wrap(bad)))
+        val len = Protocol.encodeFrames(buf, Protocol.TYPE_VOICE, 1, 1, listOf(ByteArray(40)))
+        val truncated = wrap(buf, len - 10)
+        assertNotNull(Protocol.readHeader(truncated))
+        assertNull("short payload must not decode", Protocol.decodeFrames(truncated))
+        // Packets from v1 builds are ignored, not misread.
+        val old = buf.array().copyOf(len).also { it[2] = 1 }
+        assertNull(Protocol.readHeader(ByteBuffer.wrap(old)))
     }
 
     @Test

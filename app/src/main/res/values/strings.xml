@@ -180,4 +180,19 @@
     <string name="talk_on_air">● Talking</string>
     <string name="talk_music_phone">Music only</string>
     <string name="peer_talking">talking</string>
+
+    <string name="peer_weak">⚠ weak signal</string>
+    <string name="wifi_line">📶 Wi-Fi: %1$s (%2$d dBm) · %3$s</string>
+    <string name="wifi_strong">strong</string>
+    <string name="wifi_ok">good</string>
+    <string name="wifi_weak">weak</string>
+    <string name="wifi_24">2.4 GHz</string>
+    <string name="wifi_5">5 GHz</string>
+    <string name="wifi_5_tip">💡 For more range between bikes, set the hotspot to 2.4 GHz (hotspot settings → band).</string>
+    <string name="rx_denoise">Clean the voices I hear</string>
+    <string name="rx_denoise_note">Removes wind and engine noise from the other riders’ voices on this phone too.</string>
+    <string name="echo_guard">Stop my own voice echoing back</string>
+    <string name="echo_guard_note">While you talk, incoming voices are turned down, so your voice picked up by a pillion’s or a nearby rider’s phone doesn’t come back to you.</string>
+    <string name="gestures_title">🎧 Headset button, without taking the phone out</string>
+    <string name="gestures">• 1 tap: talk / mute (music phone: play/pause)\n• 2 taps: switch music quality ↔ mic always on — a bright rising tone means music quality, a low falling tone means mic always on (talk phone: mute, music phone: next song)\n• 3 taps: next song</string>
 </resources>

@@ -74,6 +74,16 @@ class Settings(context: Context) {
         get() = p.getBoolean("driveScreenOn", false)
         set(v) = p.edit().putBoolean("driveScreenOn", v).apply()
 
+    /** Noise suppression on the voices you hear (cleans the other rider's wind). */
+    var rxDenoise: Boolean
+        get() = p.getBoolean("rxDenoise", true)
+        set(v) = p.edit().putBoolean("rxDenoise", v).apply()
+
+    /** Turn incoming voices down while you talk, so your own voice can't echo back. */
+    var echoGuard: Boolean
+        get() = p.getBoolean("echoGuard", true)
+        set(v) = p.edit().putBoolean("echoGuard", v).apply()
+
     /** Standby while alone, auto-off after 30 minutes alone. */
     var batterySaver: Boolean
         get() = p.getBoolean("batterySaver", true)

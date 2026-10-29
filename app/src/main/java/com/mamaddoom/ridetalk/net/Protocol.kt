@@ -13,13 +13,21 @@ import java.nio.ByteOrder
  *   8  i32    sequence number (per sender, per stream)
  *  12  ...    payload
  *
- * Voice payload is one Opus packet (16 kHz mono, 20 ms, in-band FEC).
- * Music payload is raw PCM16: on a hotspot 1.3 Mbit/s is nothing, and skipping
- * a codec keeps music CPU cost at zero on both phones.
+ * Voice and music payloads are a redundancy container (in the spirit of RFC 2198):
+ *
+ *   u8 count, then count × (u16 length, Opus packet), newest first;
+ *   entry k belongs to sequence number (seq - k).
+ *
+ * Voice carries the current 20 ms Opus frame plus the two before it (with
+ * Opus in-band FEC on top), music the current 20 ms frame plus one. A
+ * packet lost on a fading highway link is rebuilt from the next one, and
+ * compressed music (~128 kbit/s instead of 1.3 Mbit/s raw) leaves the weak
+ * link enough airtime for voice and keepalives.
  */
 object Protocol {
     const val PORT = 47800
-    const val VERSION: Byte = 1
+    /** v2: redundancy containers and Opus music. Older builds are ignored, not misread. */
+    const val VERSION: Byte = 2
     const val HEADER = 12
     private const val MAGIC0: Byte = 'R'.code.toByte()
     private const val MAGIC1: Byte = 'T'.code.toByte()
@@ -39,10 +47,14 @@ object Protocol {
     const val VOICE_RATE = 16000
     const val VOICE_FRAME = 320
 
-    /** Music: 32 kHz stereo, 10 ms packets (1280 bytes, fits one MTU). */
-    const val MUSIC_RATE = 32000
-    const val MUSIC_FRAMES = 320
+    /** Music: 48 kHz stereo, 20 ms Opus frames. */
+    const val MUSIC_RATE = 48000
+    const val MUSIC_FRAMES = 960
     const val MUSIC_SAMPLES = MUSIC_FRAMES * 2
+
+    /** Redundancy depth (frames per packet, including the current one). */
+    const val VOICE_REDUNDANCY = 3
+    const val MUSIC_REDUNDANCY = 2
 
     const val FLAG_TALKING = 1
     const val FLAG_MUSIC = 2
@@ -51,6 +63,8 @@ object Protocol {
     const val FLAG_MUSIC_PHONE = 8
 
     const val MAX_PACKET = 1500
+    /** Largest datagram we build: 1472 bytes of UDP payload minus room for the group-code tag. */
+    private const val MAX_PAYLOAD_END = 1472 - 16
     private const val MAX_NAME = 40
     private const val MAX_TITLE = 120
 
@@ -105,17 +119,39 @@ object Protocol {
         return out
     }
 
-    fun encodePcm(buf: ByteBuffer, type: Byte, sender: Int, seq: Int, pcm: ShortArray, count: Int): Int {
+    /**
+     * Writes a redundancy container: [frames] newest first (frames[0] is [seq]).
+     * Stops early rather than overflowing one datagram, so the newest frame always fits.
+     */
+    fun encodeFrames(buf: ByteBuffer, type: Byte, sender: Int, seq: Int, frames: List<ByteArray>): Int {
         writeHeader(buf, type, sender, seq)
-        buf.asShortBuffer().put(pcm, 0, count)
-        return HEADER + count * 2
+        val countPos = buf.position()
+        buf.put(0)
+        var count = 0
+        for (f in frames) {
+            if (count == 255 || buf.position() + 2 + f.size > MAX_PAYLOAD_END) break
+            buf.putShort(f.size.toShort())
+            buf.put(f)
+            count++
+        }
+        buf.put(countPos, count.toByte())
+        return buf.position()
     }
 
-    /** Decodes exactly [count] samples, or returns null if the payload is short. */
-    fun decodePcm(buf: ByteBuffer, count: Int): ShortArray? {
-        if (buf.remaining() < count * 2) return null
-        val out = ShortArray(count)
-        buf.asShortBuffer().get(out)
+    /** Reads a redundancy container; entry k belongs to (seq - k). Null if malformed. */
+    fun decodeFrames(buf: ByteBuffer): List<ByteArray>? {
+        if (buf.remaining() < 1) return null
+        val count = buf.get().toInt() and 0xff
+        if (count == 0) return null
+        val out = ArrayList<ByteArray>(count)
+        repeat(count) {
+            if (buf.remaining() < 2) return null
+            val len = buf.getShort().toInt() and 0xffff
+            if (len == 0 || buf.remaining() < len) return null
+            val f = ByteArray(len)
+            buf.get(f)
+            out += f
+        }
         return out
     }
 

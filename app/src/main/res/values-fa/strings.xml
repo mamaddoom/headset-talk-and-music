@@ -180,4 +180,19 @@
     <string name="talk_on_air">● در حال صحبت</string>
     <string name="talk_music_phone">فقط موزیک</string>
     <string name="peer_talking">در حال صحبت</string>
+
+    <string name="peer_weak">⚠ سیگنال ضعیف</string>
+    <string name="wifi_line">📶 وای‌فای: %1$s (%2$d dBm) · %3$s</string>
+    <string name="wifi_strong">قوی</string>
+    <string name="wifi_ok">خوب</string>
+    <string name="wifi_weak">ضعیف</string>
+    <string name="wifi_24">۲٫۴ گیگاهرتز</string>
+    <string name="wifi_5">۵ گیگاهرتز</string>
+    <string name="wifi_5_tip">💡 برای برد بیشتر بین موتورها، هات‌اسپات را روی ۲٫۴ گیگاهرتز بگذارید (تنظیمات هات‌اسپات ← باند).</string>
+    <string name="rx_denoise">تمیز کردن صدای همراه‌ها</string>
+    <string name="rx_denoise_note">نویز باد و موتور را از صدای بقیه هم، روی همین گوشی، حذف می‌کند.</string>
+    <string name="echo_guard">جلوگیری از برگشت صدای خودم</string>
+    <string name="echo_guard_note">وقتی حرف می‌زنید صدای دریافتی کم می‌شود، تا صدای شما که از گوشی ترک‌نشین یا موتورسوار کناری ضبط می‌شود به گوش خودتان برنگردد.</string>
+    <string name="gestures_title">🎧 دکمهٔ هندزفری، بدون درآوردن گوشی</string>
+    <string name="gestures">• ۱ ضربه: صحبت / قطع میکروفن (گوشی موزیک: پخش/توقف)\n• ۲ ضربه: جابه‌جایی «کیفیت موزیک» ↔ «میکروفن همیشه باز» — صدای زیرِ رو به بالا یعنی کیفیت موزیک، صدای بمِ رو به پایین یعنی میکروفن همیشه باز (گوشی مکالمه: قطع میکروفن، گوشی موزیک: آهنگ بعد)\n• ۳ ضربه: آهنگ بعد</string>
 </resources>

@@ -14,10 +14,19 @@ class PeerAudio {
     /** Receive-side leveler: brings every rider to the same loudness (older senders, quiet mics). */
     val leveler = SpeechAgc(targetDb = -18f, maxGainDb = 9f, minGainDb = -6f)
     val decoder = VoiceDecoder()
-    /** Last voice sample, for seamless 16 -> 32 kHz upsampling across frames. */
+    /**
+     * Receive-side noise suppression: cleans what reaches *your* ear even if
+     * the other rider's phone let wind through. Starts from a quiet floor
+     * (voice only arrives while someone talks, so there is no noise-only lead-in).
+     */
+    val denoiser = VoiceDenoiser(Protocol.VOICE_RATE, learnInitialNoise = false).apply { strength = 50 }
+    val floatBuf = FloatArray(Protocol.VOICE_FRAME)
+    /** Last voice sample, for seamless 16 -> 48 kHz upsampling across frames. */
     var lastSample = 0f
     /** Consecutive concealed frames; after a few we fade to silence. */
     var lossRun = 0
+    /** Smoothed echo-guard gain (1 = open). */
+    var echoGain = 1f
     @Volatile var levelDb = -120f
     @Volatile var lastVoiceAtMs = 0L
 }
@@ -31,17 +40,27 @@ class Mixer(
     /** Voice-call audio attributes (needed while the headset mic is in use). */
     private val sco: Boolean,
     /**
-     * 32 kHz stereo output. False only for a classic Bluetooth call link (SCO),
+     * 48 kHz stereo output. False only for a classic Bluetooth call link (SCO),
      * which carries at most 16 kHz mono; LE Audio, wired and speaker get full rate.
      */
     private val highQuality: Boolean,
     private val preferredOutput: AudioDeviceInfo?,
     private val peers: () -> Collection<PeerAudio>,
-    private val music: JitterBuffer<ShortArray>,
+    private val music: JitterBuffer<ByteArray>,
 ) {
     @Volatile var voiceVolume = 1f
-    @Volatile var musicVolume = 0.6f
+    @Volatile var musicVolume = 0.85f
     @Volatile var duckingEnabled = true
+    /** Noise suppression on incoming voices. */
+    @Volatile var rxDenoise = true
+    /**
+     * Echo guard: while we talk (and briefly after, to cover the network delay)
+     * incoming voices are turned down, so our own voice picked up by a nearby
+     * mic — a pillion's phone, a rider right beside us — doesn't come back as echo.
+     */
+    @Volatile var echoGuard = true
+    /** Last time we sent a voice frame (set by the engine for every frame). */
+    @Volatile var localSpeechAtMs = 0L
     /**
      * Music phone of a two-phone setup: voices are not played here, but the
      * engine stamps this when someone talks so the music still ducks.
@@ -51,11 +70,16 @@ class Mixer(
     @Volatile var mono = false
     /** Set by the engine while we are transmitting, so our own talking also ducks music. */
     @Volatile var localTalking = false
-    /** Two-tone cues mixed into the output: mic ready, rider joined, rider left. */
+
+    /** Two-tone cues mixed into the output. */
     enum class Cue(val first: Double, val second: Double, val level: Double) {
         READY(880.0, 1320.0, 0.25),
         JOIN(660.0, 990.0, 0.18),
         LEAVE(990.0, 660.0, 0.18),
+        /** Switched to music-quality mode: bright, rising. */
+        MODE_MUSIC(784.0, 1568.0, 0.22),
+        /** Switched to always-on mic: low, falling. */
+        MODE_CALL(523.0, 392.0, 0.25),
     }
 
     @Volatile private var pendingCue: Cue? = null
@@ -75,6 +99,8 @@ class Mixer(
     val outRate = if (highQuality) Protocol.MUSIC_RATE else Protocol.VOICE_RATE
     private val channels = if (highQuality) 2 else 1
     private val periodFrames = outRate / 50 // 20 ms
+    /** Output samples per voice sample (48 kHz / 16 kHz = 3, or 1 on a call link). */
+    private val upsample = outRate / Protocol.VOICE_RATE
 
     fun start() {
         if (running) return
@@ -123,6 +149,9 @@ class Mixer(
         preferredOutput?.let { track.preferredDevice = it }
 
         val voicePcm = ShortArray(Protocol.VOICE_FRAME)
+        val musicPcm = ShortArray(Protocol.MUSIC_SAMPLES)
+        val musicDecoder = MusicDecoder()
+        var musicLossRun = 0
         val mix = FloatArray(periodFrames * channels)
         val out = ShortArray(periodFrames * channels)
         // Music squeezed into a Bluetooth call link (16 kHz mono): steep 8th-order
@@ -150,55 +179,77 @@ class Mixer(
 
                 // --- voice from every peer ---
                 val vvBase = voiceVolume
+                val denoise = rxDenoise
                 for (p in peers()) {
                     if (!pullVoice(p, voicePcm)) continue
-                    val level = Pcm.rmsDb(voicePcm)
+                    val f = p.floatBuf
+                    for (i in 0 until Protocol.VOICE_FRAME) f[i] = voicePcm[i] / 32768f
+                    if (denoise) p.denoiser.process(f, Protocol.VOICE_FRAME)
+                    val level = Pcm.rmsDb(f, Protocol.VOICE_FRAME)
                     p.levelDb = level
                     if (level > -48f) p.lastVoiceAtMs = now
-                    val vv = vvBase * p.leveler.update(level, level > -45f)
+                    // Echo guard: our own voice returns after the network + jitter delay.
+                    val echoWindow = ECHO_HOLD_MS + p.voice.target * 20L
+                    val echoTarget = if (echoGuard && now - localSpeechAtMs < echoWindow) ECHO_LEVEL else 1f
+                    p.echoGain += (echoTarget - p.echoGain) * (if (echoTarget < p.echoGain) 0.6f else 0.15f)
+                    val vv = vvBase * p.leveler.update(level, level > -45f) * p.echoGain
                     if (now - p.lastVoiceAtMs < 400) {
                         anyTalking = true
                         remote = true
                     }
-                    if (channels == 1) {
-                        for (i in 0 until periodFrames) mix[i] += voicePcm[i] / 32768f * vv
+                    if (upsample == 1) {
+                        for (i in 0 until periodFrames) mix[i] += f[i] * vv
                     } else {
-                        // 16 kHz -> 32 kHz, linear interpolation, duplicated to L/R.
+                        // 16 kHz -> 48 kHz, linear interpolation, duplicated to L/R.
                         var prev = p.lastSample
+                        var o = 0
                         for (i in 0 until Protocol.VOICE_FRAME) {
-                            val s = voicePcm[i] / 32768f * vv
-                            val mid = (prev + s) * 0.5f
-                            val o = i * 4
-                            mix[o] += mid; mix[o + 1] += mid
-                            mix[o + 2] += s; mix[o + 3] += s
+                            val s = f[i] * vv
+                            for (k in 1..upsample) {
+                                val v = prev + (s - prev) * k / upsample
+                                mix[o] += v
+                                mix[o + 1] += v
+                                o += 2
+                            }
                             prev = s
                         }
                         p.lastSample = prev
                     }
                 }
 
-                // --- shared music: two 10 ms packets per period ---
+                // --- shared music: one 20 ms Opus packet per period ---
                 val mv = musicVolume
                 val duckTarget = if (duckingEnabled && anyTalking) DUCK_LEVEL else 1f
-                for (half in 0 until 2) {
-                    val pkt = music.poll() ?: continue
+                val pkt = music.poll()
+                val haveMusic = when (music.lastResult) {
+                    JitterBuffer.Result.FRAME -> {
+                        musicLossRun = 0
+                        musicDecoder.decode(pkt!!, musicPcm)
+                    }
+                    JitterBuffer.Result.LOST -> {
+                        if (++musicLossRun <= MAX_PLC_FRAMES) musicDecoder.conceal(musicPcm) else false
+                    }
+                    JitterBuffer.Result.SILENT -> false
+                }
+                if (haveMusic) {
                     if (channels == 2) {
-                        val base = half * Protocol.MUSIC_SAMPLES
                         for (i in 0 until Protocol.MUSIC_SAMPLES) {
                             if (i and 1 == 0) duckGain += (duckTarget - duckGain) *
                                 (if (duckTarget < duckGain) duckAttack else duckRelease)
-                            mix[base + i] += pkt[i] / 32768f * mv * duckGain
+                            mix[i] += musicPcm[i] / 32768f * mv * duckGain
                         }
                     } else {
-                        val base = half * (Protocol.MUSIC_FRAMES / 2)
-                        for (i in 0 until Protocol.MUSIC_FRAMES / 2) {
-                            // Downmix to mono, low-pass, then keep every second sample.
-                            decimLp2.process(decimLp1.process((pkt[i * 4] + pkt[i * 4 + 1]) / 65536f))
-                            val d = decimLp2.process(decimLp1.process((pkt[i * 4 + 2] + pkt[i * 4 + 3]) / 65536f))
+                        // Downmix to mono, low-pass, then keep every third sample (48 -> 16 kHz).
+                        for (i in 0 until periodFrames) {
+                            var d = 0f
+                            for (k in 0 until 3) {
+                                val j = (i * 3 + k) * 2
+                                d = decimLp2.process(decimLp1.process((musicPcm[j] + musicPcm[j + 1]) / 65536f))
+                            }
                             val y = squeeze.process(air.process(presence.process(d)))
                             duckGain += (duckTarget - duckGain) *
                                 (if (duckTarget < duckGain) duckAttack else duckRelease)
-                            mix[base + i] += y * mv * duckGain
+                            mix[i] += y * mv * duckGain
                         }
                     }
                 }
@@ -211,7 +262,7 @@ class Mixer(
                 }
                 if (beepLeft > 0) {
                     val total = outRate * 18 / 100
-                    for (f in 0 until periodFrames) {
+                    for (fr in 0 until periodFrames) {
                         if (beepLeft <= 0) break
                         val t = total - beepLeft
                         val freq = if (t < total / 2) beep.first else beep.second
@@ -219,7 +270,7 @@ class Mixer(
                         // 10 ms fade in/out avoids clicks.
                         val env = minOf(1f, minOf(t, beepLeft) / (outRate / 100f))
                         val v = (Math.sin(beepPhase) * beep.level * env).toFloat()
-                        for (c in 0 until channels) mix[f * channels + c] += v
+                        for (c in 0 until channels) mix[fr * channels + c] += v
                         beepLeft--
                     }
                 }
@@ -283,5 +334,9 @@ class Mixer(
         /** Music under speech: -9 dB keeps the song present but the voice on top. */
         const val DUCK_LEVEL = 0.35f
         const val MAX_PLC_FRAMES = 3
+        /** Incoming voice while we talk: -16 dB, enough to hide our own returning voice. */
+        const val ECHO_LEVEL = 0.16f
+        /** Extra hold after our last word, on top of the peer's jitter delay. */
+        const val ECHO_HOLD_MS = 250L
     }
 }

@@ -27,7 +27,15 @@ import kotlin.math.sqrt
  * Also exposes per-frame speech features for the voice-activity detector:
  * [presence] (speech band 300–3400 Hz) and [snrDb].
  */
-class VoiceDenoiser(private val rate: Int = 16000) {
+class VoiceDenoiser(
+    private val rate: Int = 16000,
+    /**
+     * True (microphone): learn the noise floor from the first ~100 ms.
+     * False (received voice): the stream starts with speech, so start from a
+     * quiet floor and let minimum tracking find the real noise.
+     */
+    private val learnInitialNoise: Boolean = true,
+) {
     /** 0 = bypass, 100 = strongest. Safe to change from another thread. */
     @Volatile var strength = 60
 
@@ -65,6 +73,17 @@ class VoiceDenoiser(private val rate: Int = 16000) {
     private var frames = 0
     private var minCount = 0
 
+    init {
+        if (!learnInitialNoise) startQuiet()
+    }
+
+    private fun startQuiet() {
+        frames = INIT_FRAMES
+        noise.fill(QUIET_FLOOR)
+        sMin.fill(QUIET_FLOOR)
+        sTmp.fill(Float.MAX_VALUE)
+    }
+
     private val lowBins = (1000.0 * n / rate).toInt()
     private val speechLo = (300.0 * n / rate).toInt()
     private val speechHi = (3400.0 * n / rate).toInt()
@@ -86,6 +105,7 @@ class VoiceDenoiser(private val rate: Int = 16000) {
         smooth.fill(0f); sMin.fill(0f); sTmp.fill(0f); prob.fill(0f); noise.fill(0f)
         prevGain.fill(1f); prevGamma.fill(1f)
         pos = 0; frames = 0; minCount = 0
+        if (!learnInitialNoise) startQuiet()
     }
 
     private fun processFrame() {
@@ -197,6 +217,8 @@ class VoiceDenoiser(private val rate: Int = 16000) {
         const val DELTA = 7f
         const val DD = 0.92f
         const val XI_MIN = 0.003f // -25 dB
+        /** Per-bin power of a near-silent floor (about -90 dBFS). */
+        const val QUIET_FLOOR = 1e-7f
 
         /** Exponential integral E1(x), approximations good to ~1e-4 (Abramowitz–Stegun 5.1.53/5.1.56). */
         fun expInt(x: Float): Float {

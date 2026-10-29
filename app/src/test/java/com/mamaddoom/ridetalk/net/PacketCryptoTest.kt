@@ -51,7 +51,7 @@ class PacketCryptoTest {
     @Test
     fun largestMusicPacketStillFitsOneDatagram() {
         val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
-        val len = Protocol.encodePcm(buf, Protocol.TYPE_MUSIC, 1, 1, ShortArray(Protocol.MUSIC_SAMPLES), Protocol.MUSIC_SAMPLES)
+        val len = Protocol.encodeFrames(buf, Protocol.TYPE_MUSIC, 1, 1, List(2) { ByteArray(640) })
         val wire = ByteArray(Protocol.MAX_PACKET + 64)
         val n = PacketCrypto("x").seal(buf.array(), len, wire)
         assertTrue("sealed music packet is $n bytes", n <= 1472)

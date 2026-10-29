@@ -14,7 +14,7 @@ import kotlin.math.abs
 
 /**
  * Captures what other apps are playing (Spotify, YouTube Music, a podcast app…)
- * through Android's playback-capture API and turns it into 10 ms music packets.
+ * through Android's playback-capture API and turns it into 20 ms music packets.
  *
  * The phone that captures already hears the original app through its own
  * audio route, so the packets are only sent to the peers, not mixed locally
@@ -69,7 +69,7 @@ class AppAudioCapture(
             AudioRecord.Builder()
                 .setAudioPlaybackCaptureConfig(config)
                 .setAudioFormat(format)
-                .setBufferSizeInBytes(maxOf(minBuf, IN_FRAMES * 4 * 8))
+                .setBufferSizeInBytes(maxOf(minBuf, Protocol.MUSIC_SAMPLES * 2 * 4))
                 .build()
         } catch (e: Exception) {
             Log.e(TAG, "playback capture unavailable", e)
@@ -84,15 +84,9 @@ class AppAudioCapture(
             return
         }
 
-        val raw = ShortArray(IN_FRAMES * 2)
-        val f = FloatArray(IN_FRAMES * 2)
-        val lpL = LowPass4(IN_RATE, 14500.0)
-        val lpR = LowPass4(IN_RATE, 14500.0)
-        val resampler = StreamResampler(IN_RATE, Protocol.MUSIC_RATE, 2)
-        val packet = ShortArray(Protocol.MUSIC_SAMPLES)
-        var fill = 0
+        // Captured at the music rate already: 20 ms reads go out as-is, no resampling.
+        val raw = ShortArray(Protocol.MUSIC_SAMPLES)
         var silentPackets = 0
-        var packetSilent = true
 
         try {
             record.startRecording()
@@ -104,26 +98,13 @@ class AppAudioCapture(
                     got += n
                 }
                 if (!running) break
-                for (i in 0 until IN_FRAMES) {
-                    f[i * 2] = lpL.process(raw[i * 2] / 32768f)
-                    f[i * 2 + 1] = lpR.process(raw[i * 2 + 1] / 32768f)
-                }
-                val n = resampler.process(f, IN_FRAMES)
-                val o = resampler.output
-                for (i in 0 until n * 2) {
-                    val s = Pcm.clampToShort(o[i])
-                    if (abs(s.toInt()) > SILENCE) packetSilent = false
-                    packet[fill++] = s
-                    if (fill == packet.size) {
-                        fill = 0
-                        silentPackets = if (packetSilent) silentPackets + 1 else 0
-                        packetSilent = true
-                        // Nothing playing: stop sending so the channel frees up for others.
-                        val audible = silentPackets < SILENT_HOLD
-                        hasSignal = audible
-                        if (audible) sink(packet.copyOf())
-                    }
-                }
+                var silent = true
+                for (v in raw) if (abs(v.toInt()) > SILENCE) { silent = false; break }
+                silentPackets = if (silent) silentPackets + 1 else 0
+                // Nothing playing: stop sending so the channel frees up for others.
+                val audible = silentPackets < SILENT_HOLD
+                hasSignal = audible
+                if (audible) sink(raw.copyOf())
             }
         } catch (e: Exception) {
             Log.w(TAG, "playback capture stopped", e)
@@ -140,9 +121,8 @@ class AppAudioCapture(
 
     private companion object {
         const val TAG = "AppAudioCapture"
-        const val IN_RATE = 48000
-        const val IN_FRAMES = 480 // 10 ms
+        const val IN_RATE = Protocol.MUSIC_RATE
         const val SILENCE = 8
-        const val SILENT_HOLD = 50 // 0.5 s of digital silence
+        const val SILENT_HOLD = 25 // 0.5 s of digital silence
     }
 }

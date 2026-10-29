@@ -78,9 +78,14 @@ class JitterBuffer<T : Any>(
     var dropped = 0L
         private set
 
+    /**
+     * Adds [frame] for [seq]. [timed] is false for redundant copies carried in a
+     * later packet: they fill holes but must not count as late arrivals.
+     */
     @Synchronized
-    fun put(seq: Int, frame: T) {
+    fun put(seq: Int, frame: T, timed: Boolean = true) {
         if (!started) {
+            if (!timed) return // never start a stream from a redundant copy
             started = true
             nextSeq = seq
             highestSeq = seq
@@ -88,14 +93,17 @@ class JitterBuffer<T : Any>(
         } else {
             val behind = nextSeq - seq
             if (behind > capacity * 2 || seq - nextSeq >= capacity) {
+                if (!timed) return
                 // The sender restarted its counter, or we fell hopelessly behind: resync,
                 // and measure the new stream from scratch.
                 reset(seq)
                 anchored = false
                 measure(seq)
             } else {
-                measure(seq) // late packets count as jitter too
+                if (timed) measure(seq) // late packets count as jitter too
                 if (behind > 0) return
+                val i = Math.floorMod(seq, capacity)
+                if (!timed && slotSeq[i] == seq && slots[i] != null) return // already have it
             }
         }
         val i = Math.floorMod(seq, capacity)

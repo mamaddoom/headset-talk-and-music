@@ -275,6 +275,18 @@ class IntercomService : Service() {
 
     // ------------------------------------------------------------- headset button
 
+    private var presses = 0
+    private val pressHandler by lazy { Handler(mainLooper) }
+    private val resolvePresses = Runnable {
+        val n = presses
+        presses = 0
+        when (n) {
+            1 -> engine.headsetButton()
+            2 -> engine.headsetDoubleTap()
+            else -> engine.music.next()
+        }
+    }
+
     private fun startMediaSession() {
         if (session != null) return
         val s = MediaSession(this, "RideTalk")
@@ -289,9 +301,15 @@ class IntercomService : Service() {
                 if (ev.action != KeyEvent.ACTION_DOWN || ev.repeatCount > 0) return true
                 when (ev.keyCode) {
                     KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> engine.headsetButton()
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> engine.music.next()
-                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> engine.music.previous()
+                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                        // Count presses: 1 = talk/mute, 2 = switch mode, 3 = next song.
+                        presses++
+                        pressHandler.removeCallbacks(resolvePresses)
+                        pressHandler.postDelayed(resolvePresses, MULTI_PRESS_MS)
+                    }
+                    // Most earbuds turn a double tap into "next" and a triple tap into "previous".
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> engine.headsetDoubleTap()
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> engine.music.next()
                     else -> return false
                 }
                 return true
@@ -314,6 +332,7 @@ class IntercomService : Service() {
         private const val TAG = "IntercomService"
         private const val CHANNEL = "intercom"
         private const val NOTIFICATION_ID = 1
+        private const val MULTI_PRESS_MS = 450L
         const val ACTION_START = "com.mamaddoom.ridetalk.START"
         const val ACTION_STOP = "com.mamaddoom.ridetalk.STOP"
         const val ACTION_MUTE = "com.mamaddoom.ridetalk.MUTE"

@@ -81,6 +81,7 @@ class MainActivity : Activity() {
     private lateinit var linkQuality: TextView
     private lateinit var route: TextView
     private lateinit var myIp: TextView
+    private lateinit var wifiInfo: TextView
 
     // Music tab
     private lateinit var musicRoleNote: View
@@ -235,6 +236,7 @@ class MainActivity : Activity() {
         linkQuality = findViewById(R.id.linkQuality)
         route = findViewById(R.id.route)
         myIp = findViewById(R.id.myIp)
+        wifiInfo = findViewById(R.id.wifiInfo)
 
         musicRoleNote = findViewById(R.id.musicRoleNote)
         musicCard = findViewById(R.id.musicCard)
@@ -453,6 +455,14 @@ class MainActivity : Activity() {
             if (e != null) e.setBatterySaver(it) else settings.batterySaver = it
         }
         switch(R.id.swCues, settings.cues) { settings.cues = it }
+        switch(R.id.swRxDenoise, settings.rxDenoise) {
+            settings.rxDenoise = it
+            engine?.applySettings()
+        }
+        switch(R.id.swEchoGuard, settings.echoGuard) {
+            settings.echoGuard = it
+            engine?.applySettings()
+        }
         switch(R.id.swAntiFeedback, settings.antiFeedback) {
             settings.antiFeedback = it
             engine?.applySettings()
@@ -945,6 +955,23 @@ class MainActivity : Activity() {
             append(if (ips.isEmpty()) getString(R.string.no_network) else getString(R.string.my_ip, ips.joinToString(", ")))
             if (st?.wifiBound == true) append("  ·  ").append(getString(R.string.wifi_bound))
         }
+        // Hotspot client: show the signal, and suggest 2.4 GHz (longer range) when on 5 GHz.
+        val rssi = st?.wifiRssi
+        if (rssi == null) {
+            wifiInfo.visibility = View.GONE
+        } else {
+            val mhz = st.wifiMhz ?: 0
+            val quality = when {
+                rssi >= -60 -> R.string.wifi_strong
+                rssi >= -72 -> R.string.wifi_ok
+                else -> R.string.wifi_weak
+            }
+            val band = getString(if (mhz in 1..3000) R.string.wifi_24 else R.string.wifi_5)
+            wifiInfo.text = getString(R.string.wifi_line, getString(quality), rssi, band) +
+                if (mhz > 3000) "\n" + getString(R.string.wifi_5_tip) else ""
+            wifiInfo.setTextColor(getColor(if (rssi >= -72) R.color.text_dim else R.color.accent))
+            wifiInfo.visibility = View.VISIBLE
+        }
     }
 
     /** Rider chips: rebuilt when the set changes; the talking glow animates in place. */
@@ -993,11 +1020,20 @@ class MainActivity : Activity() {
         }
         for ((i, p) in list.withIndex()) {
             val chip = peerList.getChildAt(i) ?: continue
-            chip.isActivated = p.talking
+            chip.isActivated = p.talking && !p.weak
+            chip.alpha = if (p.weak) 0.6f else 1f
             val detail = chip.findViewWithTag<TextView>("detail")
-            val text = if (p.talking) getString(R.string.peer_talking) else "${p.quality}%"
+            val text = when {
+                p.weak -> getString(R.string.peer_weak)
+                p.talking -> getString(R.string.peer_talking)
+                else -> "${p.quality}%"
+            }
             if (detail.text != text) detail.text = text
-            detail.setTextColor(getColor(if (p.talking) R.color.ok else R.color.text_dim))
+            detail.setTextColor(getColor(when {
+                p.weak -> R.color.accent
+                p.talking -> R.color.ok
+                else -> R.color.text_dim
+            }))
         }
     }
 

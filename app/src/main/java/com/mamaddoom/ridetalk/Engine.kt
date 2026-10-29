@@ -11,6 +11,7 @@ import com.mamaddoom.ridetalk.audio.AppAudioCapture
 import com.mamaddoom.ridetalk.audio.AudioRouter
 import com.mamaddoom.ridetalk.audio.JitterBuffer
 import com.mamaddoom.ridetalk.audio.Mixer
+import com.mamaddoom.ridetalk.audio.MusicEncoder
 import com.mamaddoom.ridetalk.audio.MusicPlayer
 import com.mamaddoom.ridetalk.audio.PeerAudio
 import com.mamaddoom.ridetalk.audio.VoiceCapture
@@ -53,6 +54,8 @@ class Engine(
         val musicPhone: Boolean,
         /** The other phone of this same rider (two-phone setup). */
         val mine: Boolean,
+        /** Not heard for a few seconds: link fading, waiting for it to come back. */
+        val weak: Boolean,
     )
 
     data class State(
@@ -100,6 +103,9 @@ class Engine(
         val otherPhoneConnected: Boolean,
         /** Seconds left in a mic test, 0 when none is running. */
         val micTestLeftS: Int,
+        /** Wi-Fi signal (dBm) and band when this phone is a hotspot client; null on the hotspot. */
+        val wifiRssi: Int?,
+        val wifiMhz: Int?,
     )
 
     val settings = Settings(context)
@@ -112,9 +118,13 @@ class Engine(
     /** Snapshot read by the mixer every 20 ms; rebuilt only when peers change. */
     @Volatile private var peerAudioList: List<PeerAudio> = emptyList()
     private val peerAudios = { peerAudioList }
-    private val musicBuffer = JitterBuffer<ShortArray>(
-        minTarget = musicTarget(), maxTarget = 80, capacity = 128, periodMs = 10.0,
+    private val musicBuffer = JitterBuffer<ByteArray>(
+        minTarget = musicTarget(), maxTarget = 40, capacity = 64, periodMs = 20.0,
     )
+    private val musicEncoder = MusicEncoder()
+    /** Recently sent frames, newest first, for the redundancy containers. */
+    private val voiceHistory = ArrayDeque<ByteArray>()
+    private val musicHistory = ArrayDeque<ByteArray>()
     @Volatile private var musicSource = 0
     @Volatile private var musicSourceAtMs = 0L
 
@@ -374,6 +384,32 @@ class Engine(
         }
     }
 
+    /**
+     * Headset double-tap: switch what the headset does without touching the
+     * phone. One phone: music quality <-> mic always on, with a distinct cue
+     * for each. Talk phone: mute toggle. Music phone: next song.
+     */
+    fun headsetDoubleTap() {
+        when (settings.role) {
+            Settings.Role.NORMAL -> {
+                val toCall = !settings.headsetMic
+                // The audio path restarts, so queue the cue for the new mixer.
+                queuedCue = if (toCall) Mixer.Cue.MODE_CALL else Mixer.Cue.MODE_MUSIC
+                queuedCueAtMs = System.currentTimeMillis()
+                setHeadsetMic(toCall)
+            }
+            Settings.Role.TALK -> setMuted(!muted)
+            Settings.Role.MUSIC -> music.next()
+        }
+        notifyState()
+    }
+
+    /** Wi-Fi came back or changed: announce ourselves at once instead of waiting a second. */
+    override fun onNetworkChanged() {
+        ctl.postDelayed(::sendBeacon, 300)
+        ctl.postDelayed(::sendBeacon, 1000)
+    }
+
     /** Music-quality mode: opens the headset mic until you stop talking (or tap again). */
     /** Music-quality mode with the headset mic: the only setup where talking needs a tap. */
     val tapToTalk: Boolean
@@ -539,10 +575,12 @@ class Engine(
         m.musicVolume = settings.musicVolume / 100f
         m.duckingEnabled = settings.ducking
         m.mono = settings.monoOutput
+        m.rxDenoise = settings.rxDenoise
+        m.echoGuard = settings.echoGuard
     }
 
-    /** 100 ms base buffer plus the user's sync offset, in 10 ms packets. */
-    private fun musicTarget() = 10 + settings.syncDelayMs / 10
+    /** 100 ms base buffer plus the user's sync offset, in 20 ms packets. */
+    private fun musicTarget() = 5 + settings.syncDelayMs / 20
 
     // ---------------------------------------------------------------- periodic
 
@@ -671,12 +709,18 @@ class Engine(
                     // Music phone: voices play on the talk phone; here they only duck the music.
                     mixer?.voiceElsewhereAtMs = System.currentTimeMillis()
                 } else {
-                    Protocol.decodeBytes(payload)?.let { peer.audio.voice.put(header.seq, it) }
+                    // Newest frame first; the older ones refill holes left by lost packets.
+                    Protocol.decodeFrames(payload)?.forEachIndexed { k, f ->
+                        peer.audio.voice.put(header.seq - k, f, timed = k == 0)
+                    }
                 }
             }
             Protocol.TYPE_MUSIC -> if (settings.role != Settings.Role.TALK) {
                 // The talk phone never plays music; the music phone does.
-                Protocol.decodePcm(payload, Protocol.MUSIC_SAMPLES)?.let { acceptMusic(header.sender, header.seq, it) }
+                val frames = Protocol.decodeFrames(payload)
+                if (frames != null && claimMusic(header.sender)) {
+                    frames.forEachIndexed { k, f -> musicBuffer.put(header.seq - k, f, timed = k == 0) }
+                }
             }
             Protocol.TYPE_BEACON -> Protocol.decodeBeacon(payload)?.let {
                 peer.name = it.name
@@ -692,6 +736,8 @@ class Engine(
         val now = System.currentTimeMillis()
         val existing = peers[id]
         if (existing != null) {
+            // Back after a long gap (tunnel, distance): let the rider know the link returned.
+            if (now - existing.lastSeenMs > WEAK_MS * 3) playCue(Mixer.Cue.JOIN)
             existing.lastSeenMs = now
             if (existing.address != from) {
                 existing.address = from
@@ -711,13 +757,11 @@ class Engine(
         return p
     }
 
-    /** One music source at a time: the first sender keeps the channel until it goes quiet. */
-    private fun acceptMusic(sender: Int, seq: Int, pcm: ShortArray) {
-        if (!claimMusic(sender)) return
-        musicBuffer.put(seq, pcm)
-    }
-
-    /** Returns false if another source owns the channel; clears the buffer on a change of source. */
+    /**
+     * One music source at a time: the first sender keeps the channel until it
+     * goes quiet. Returns false if another source owns it; clears the buffer on
+     * a change of source.
+     */
     @Synchronized
     private fun claimMusic(sender: Int): Boolean {
         val now = System.currentTimeMillis()
@@ -739,9 +783,13 @@ class Engine(
             return
         }
         if (n <= 0) return
-        val len = Protocol.encodeBytes(voiceBuf, Protocol.TYPE_VOICE, myId, voiceSeq++, opusOut, n)
+        val frame = opusOut.copyOf(n)
+        voiceHistory.addFirst(frame)
+        while (voiceHistory.size > Protocol.VOICE_REDUNDANCY) voiceHistory.removeLast()
+        val len = Protocol.encodeFrames(voiceBuf, Protocol.TYPE_VOICE, myId, voiceSeq++, voiceHistory)
         transport.sendToPeers(voiceBuf.array(), len)
-        if (micTesting) loopback.voice.put(loopbackSeq++, opusOut.copyOf(n))
+        mixer?.localSpeechAtMs = System.currentTimeMillis()
+        if (micTesting) loopback.voice.put(loopbackSeq++, frame)
     }
 
     override fun onMicLevel(levelDb: Float, transmitting: Boolean) {
@@ -774,13 +822,19 @@ class Engine(
      * Captured app audio is not: this phone already hears the original app.
      */
     private fun sendMusic(pcm: ShortArray, playLocally: Boolean) {
-        val seq = musicSeq.getAndIncrement()
+        val seq: Int
+        val frame: ByteArray
         synchronized(musicBuf) {
-            val len = Protocol.encodePcm(musicBuf, Protocol.TYPE_MUSIC, myId, seq, pcm, pcm.size)
+            frame = musicEncoder.encode(pcm) ?: return
+            seq = musicSeq.getAndIncrement()
+            musicHistory.addFirst(frame)
+            while (musicHistory.size > Protocol.MUSIC_REDUNDANCY) musicHistory.removeLast()
+            val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
             transport.sendToPeers(musicBuf.array(), len)
         }
         if (playLocally) {
-            acceptMusic(myId, seq, pcm)
+            // Our own music goes through the same buffer (and decoder) as everyone else's: in sync.
+            if (claimMusic(myId)) musicBuffer.put(seq, frame)
         } else if (claimMusic(myId)) {
             musicBuffer.clear() // keep nothing of ours queued locally
         }
@@ -839,6 +893,7 @@ class Engine(
                     talkPhone = it.talkPhone,
                     musicPhone = it.musicPhone,
                     mine = isMyOtherPhone(it),
+                    weak = now - it.lastSeenMs > WEAK_MS,
                 )
             }.sortedBy { it.name },
             micLevelDb = micLevel,
@@ -876,6 +931,8 @@ class Engine(
             headsetConnected = router.bluetoothHeadsetPresent(),
             otherPhoneConnected = peers.values.any { isMyOtherPhone(it) },
             micTestLeftS = ((micTestUntilMs - now + 999) / 1000).toInt().coerceAtLeast(0),
+            wifiRssi = transport.wifiRssi,
+            wifiMhz = transport.wifiMhz,
         )
     }
 
@@ -886,7 +943,14 @@ class Engine(
     }
 
     private companion object {
-        const val PEER_TIMEOUT_MS = 5000L
+        /**
+         * A rider stays in the group through this much silence (fading highway
+         * link, tunnel). Only after it are they dropped; before that they show as
+         * "weak signal" and come straight back when packets arrive.
+         */
+        const val PEER_TIMEOUT_MS = 30_000L
+        /** Nothing heard for this long: show the rider as weak / reconnecting. */
+        const val WEAK_MS = 2500L
         /** Keep audio up this long after the last rider drops, to ride out short gaps. */
         const val STANDBY_DELAY_MS = 20_000L
         const val AUTO_STOP_MS = 30 * 60_000L

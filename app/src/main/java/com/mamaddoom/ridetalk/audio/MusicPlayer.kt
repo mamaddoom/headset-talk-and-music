@@ -15,14 +15,14 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.random.Random
 
 /**
- * Playlist player: decodes local audio files and emits 10 ms packets of
- * 32 kHz stereo PCM at real-time pace. The engine sends every packet to the
+ * Playlist player: decodes local audio files and emits 20 ms packets of
+ * 48 kHz stereo PCM at real-time pace (the engine Opus-encodes them). The engine sends every packet to the
  * peers and also feeds it into our own music jitter buffer, so every phone
  * plays the same packet after the same buffering delay and they stay in sync.
  */
 class MusicPlayer(private val context: Context, private val sink: Sink) {
     interface Sink {
-        /** Called on the player thread for every 10 ms packet. */
+        /** Called on the player thread for every 20 ms packet. */
         fun onMusicPacket(pcm: ShortArray)
         /** Called from any thread when playback state or the playlist changes. */
         fun onMusicState()
@@ -365,7 +365,8 @@ class MusicPlayer(private val context: Context, private val sink: Sink) {
         }
     }
 
-    private fun cutoff(rate: Int) = minOf(14500.0, rate * 0.45)
+    /** Anti-alias only matters for sources above 48 kHz; keep the full audio band otherwise. */
+    private fun cutoff(rate: Int) = minOf(20000.0, rate * 0.45, Protocol.MUSIC_RATE * 0.45)
 
     fun displayName(uri: Uri): String = try {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
@@ -377,6 +378,6 @@ class MusicPlayer(private val context: Context, private val sink: Sink) {
 
     private companion object {
         const val TAG = "MusicPlayer"
-        const val PERIOD_NS = 10_000_000L
+        const val PERIOD_NS = 20_000_000L // one 20 ms Opus frame
     }
 }

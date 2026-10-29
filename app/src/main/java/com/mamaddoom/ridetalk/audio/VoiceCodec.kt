@@ -13,7 +13,8 @@ class VoiceEncoder(bitrate: Int = 24000) {
         setComplexity(5)
         setSignalType(OpusSignal.OPUS_SIGNAL_VOICE)
         setUseInbandFEC(true)
-        setPacketLossPercent(10)
+        // Tuned for a fading highway link: more in-band FEC, on top of packet redundancy.
+        setPacketLossPercent(20)
         setUseVBR(true)
     }
 
@@ -39,6 +40,53 @@ class VoiceDecoder {
     private fun run(packet: ByteArray?, fec: Boolean, out: ShortArray): Boolean = try {
         val n = dec.decode(packet, 0, packet?.size ?: 0, out, 0, Protocol.VOICE_FRAME, fec)
         if (n < Protocol.VOICE_FRAME) out.fill(0, maxOf(n, 0), Protocol.VOICE_FRAME)
+        n > 0
+    } catch (_: Exception) {
+        out.fill(0)
+        false
+    }
+
+    fun reset() = dec.resetState()
+}
+
+/**
+ * Opus music encoder: 48 kHz stereo, 20 ms, ~128 kbit/s VBR. Roughly a tenth
+ * of the airtime raw PCM needed, which keeps a weak Wi-Fi link alive.
+ */
+class MusicEncoder(bitrate: Int = 128000) {
+    private val enc = OpusEncoder(Protocol.MUSIC_RATE, 2, OpusApplication.OPUS_APPLICATION_AUDIO).apply {
+        setBitrate(bitrate)
+        setComplexity(5)
+        setSignalType(OpusSignal.OPUS_SIGNAL_MUSIC)
+        setUseVBR(true)
+    }
+    private val out = ByteArray(MAX_BYTES)
+
+    /** Encodes one [Protocol.MUSIC_FRAMES]-frame stereo packet; returns the Opus bytes. */
+    fun encode(pcm: ShortArray): ByteArray? = try {
+        val n = enc.encode(pcm, 0, Protocol.MUSIC_FRAMES, out, 0, out.size)
+        if (n > 0) out.copyOf(n) else null
+    } catch (_: Exception) {
+        null
+    }
+
+    companion object {
+        /** Caps one frame so two (current + redundant) always fit in a datagram. */
+        const val MAX_BYTES = 640
+    }
+}
+
+/** Opus music decoder with packet-loss concealment. */
+class MusicDecoder {
+    private val dec = OpusDecoder(Protocol.MUSIC_RATE, 2)
+
+    fun decode(packet: ByteArray, out: ShortArray): Boolean = run(packet, out)
+
+    fun conceal(out: ShortArray): Boolean = run(null, out)
+
+    private fun run(packet: ByteArray?, out: ShortArray): Boolean = try {
+        val n = dec.decode(packet, 0, packet?.size ?: 0, out, 0, Protocol.MUSIC_FRAMES, false)
+        if (n < Protocol.MUSIC_FRAMES) out.fill(0, maxOf(n, 0) * 2, Protocol.MUSIC_SAMPLES)
         n > 0
     } catch (_: Exception) {
         out.fill(0)
