@@ -29,13 +29,24 @@
                 android:src="@drawable/ic_launcher_fg" />
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/app_name"
                 android:textColor="@color/text"
                 android:textSize="24sp" />
+
+            <ImageView
+                android:id="@+id/headerPaw"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="10dp"
+                android:contentDescription="@null"
+                android:rotation="20"
+                android:src="@drawable/paw" />
+
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
 
             <LinearLayout
                 android:id="@+id/statusPill"
@@ -71,6 +82,18 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
+
+            <!-- Big faint paw print behind the pages. -->
+            <ImageView
+                android:layout_width="220dp"
+                android:layout_height="220dp"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="-40dp"
+                android:layout_marginBottom="-20dp"
+                android:alpha="0.07"
+                android:contentDescription="@null"
+                android:rotation="-25"
+                android:src="@drawable/paw" />
 
             <!-- ============================== INTERCOM ============================== -->
             <ScrollView android:id="@+id/pageHome" style="@style/Page">
@@ -265,7 +288,7 @@
                                     android:background="@drawable/play_circle"
                                     android:stateListAnimator="@null"
                                     android:text="@string/play"
-                                    android:textColor="@color/bg"
+                                    android:textColor="#FFFFFF"
                                     android:textSize="30sp" />
 
                                 <Button android:id="@+id/btnNext" style="@style/BigButton" android:layout_width="64dp" android:layout_height="64dp" android:layout_weight="0" android:text="@string/next" android:textSize="22sp" />
@@ -465,9 +488,26 @@
                         <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/rx_denoise_note" />
                         <Switch android:id="@+id/swEchoGuard" style="@style/BigSwitch" android:text="@string/echo_guard" />
                         <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/echo_guard_note" />
+                    </LinearLayout>
 
-                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/gestures_title" />
-                        <TextView style="@style/Note" android:lineSpacingMultiplier="1.3" android:text="@string/gestures" />
+                    <!-- Hands-free controls: headset taps and phone volume-key combos, each mappable. -->
+                    <LinearLayout style="@style/Card">
+
+                        <TextView style="@style/CardTitle" android:text="@string/sec_controls" />
+                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/controls_intro" />
+
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+                            <Button android:id="@+id/btnPresetStandard" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_standard" android:textSize="13sp" />
+                            <Button android:id="@+id/btnPresetHeadset" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_headset_only" android:textSize="13sp" />
+                            <Button android:id="@+id/btnPresetMusic" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_music_first" android:textSize="13sp" />
+                        </LinearLayout>
+
+                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_headset" />
+                        <LinearLayout android:id="@+id/gestureListHeadset" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+
+                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_volume" />
+                        <LinearLayout android:id="@+id/gestureListVolume" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                        <TextView style="@style/Note" android:text="@string/controls_volume_note" />
                     </LinearLayout>
 
                     <!-- Group & network -->
@@ -553,12 +593,12 @@
         </FrameLayout>
     </LinearLayout>
 
-    <!-- Driving screen: black (cheap on OLED), two huge buttons, nothing else to mis-tap. -->
+    <!-- Driving screen: two huge buttons, nothing else to mis-tap. -->
     <LinearLayout
         android:id="@+id/driveOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#000000"
+        android:background="@color/bg"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"

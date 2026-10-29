@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:colorPrimary">@color/bg</item>
         <item name="android:colorPrimaryDark">@color/bg</item>
@@ -12,6 +12,15 @@
         <item name="android:colorControlActivated">@color/accent</item>
         <item name="android:colorControlHighlight">@color/ripple</item>
         <item name="android:windowAnimationStyle">@style/WindowFade</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:alertDialogTheme">@style/PinkDialog</item>
+    </style>
+
+    <style name="PinkDialog" parent="android:Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:windowBackground">@drawable/dialog_bg</item>
     </style>
 
     <style name="WindowFade" parent="android:Animation.Activity">
@@ -106,8 +115,8 @@
         <item name="android:textColor">@color/text</item>
         <item name="android:textSize">16sp</item>
         <item name="android:layout_marginTop">6dp</item>
-        <item name="android:thumbTint">@color/text</item>
-        <item name="android:trackTint">@color/stroke</item>
+        <item name="android:thumbTint">@color/switch_thumb</item>
+        <item name="android:trackTint">@color/switch_track</item>
     </style>
 
     <style name="Field">

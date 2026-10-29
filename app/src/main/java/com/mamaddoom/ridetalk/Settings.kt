@@ -106,6 +106,30 @@ class Settings(context: Context) {
         get() = p.getBoolean("shuffle", false)
         set(v) = p.edit().putBoolean("shuffle", v).apply()
 
+    // ------------------------------------------------------------- hands-free controls
+
+    fun gesture(t: Controls.Trigger): Controls.Action =
+        p.getString("g_${t.name}", null)
+            ?.let { n -> Controls.Action.values().firstOrNull { it.name == n } }
+            ?: t.default
+
+    fun setGesture(t: Controls.Trigger, a: Controls.Action) =
+        p.edit().putString("g_${t.name}", a.name).apply()
+
+    fun applyPreset(preset: Controls.Preset) {
+        val e = p.edit()
+        for ((t, a) in preset.map) e.putString("g_${t.name}", a.name)
+        e.apply()
+    }
+
+    /** The preset the current mapping matches, or null when customised. */
+    val gesturePreset: Controls.Preset?
+        get() = Controls.Preset.values().firstOrNull { pr -> pr.map.all { (t, a) -> gesture(t) == a } }
+
+    /** True when any phone volume-key combination does something. */
+    val volumeGestures: Boolean
+        get() = Controls.Trigger.values().any { it.isVolume && gesture(it) != Controls.Action.NONE }
+
     // ------------------------------------------------------------- trip setup
 
     /**

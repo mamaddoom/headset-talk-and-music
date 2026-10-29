@@ -80,6 +80,12 @@ class Mixer(
         MODE_MUSIC(784.0, 1568.0, 0.22),
         /** Switched to always-on mic: low, falling. */
         MODE_CALL(523.0, 392.0, 0.25),
+        /** Mic muted: two low beeps. */
+        MUTED(330.0, 330.0, 0.25),
+        /** Mic back on: two high beeps. */
+        UNMUTED(660.0, 660.0, 0.2),
+        /** Music volume step. */
+        TICK(1200.0, 1200.0, 0.12),
     }
 
     @Volatile private var pendingCue: Cue? = null

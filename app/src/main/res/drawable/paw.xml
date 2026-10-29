@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paw print. Generated. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M4.46,16.48 a7.54,6.09 0 1,0 15.08,0 a7.54,6.09 0 1,0 -15.08,0 Z M0.54,8.07 a3.045,3.654 0 1,0 6.09,0 a3.045,3.654 0 1,0 -6.09,0 Z M5.77,3.43 a3.19,3.828 0 1,0 6.38,0 a3.19,3.828 0 1,0 -6.38,0 Z M11.86,3.43 a3.19,3.828 0 1,0 6.38,0 a3.19,3.828 0 1,0 -6.38,0 Z M17.37,8.07 a3.045,3.654 0 1,0 6.09,0 a3.045,3.654 0 1,0 -6.09,0 Z" android:fillColor="@color/accent" />
+</vector>

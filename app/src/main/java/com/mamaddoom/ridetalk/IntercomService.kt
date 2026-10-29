@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.IntentFilter
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.media.session.MediaSession
@@ -18,6 +21,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 
@@ -87,6 +91,7 @@ class IntercomService : Service() {
         }
         acquireLocks()
         startMediaSession()
+        startVolumeWatch()
         engine.start()
     }
 
@@ -126,6 +131,7 @@ class IntercomService : Service() {
 
     fun stopIntercom() {
         engine.stop()
+        stopVolumeWatch()
         session?.release()
         session = null
         releaseLocks()
@@ -138,6 +144,7 @@ class IntercomService : Service() {
     }
 
     override fun onDestroy() {
+        stopVolumeWatch()
         engine.release()
         session?.release()
         releaseLocks()
@@ -273,18 +280,97 @@ class IntercomService : Service() {
         multicastLock = null
     }
 
-    // ------------------------------------------------------------- headset button
+    // ------------------------------------------------------------- hands-free controls
 
-    private var presses = 0
+    private val settings by lazy { Settings(applicationContext) }
     private val pressHandler by lazy { Handler(mainLooper) }
+    private var presses = 0
+    private var downAtMs = 0L
+    private var longFired = false
     private val resolvePresses = Runnable {
         val n = presses
         presses = 0
-        when (n) {
-            1 -> engine.headsetButton()
-            2 -> engine.headsetDoubleTap()
-            else -> engine.music.next()
+        if (n > 0) engine.perform(settings.gesture(Controls.headsetTrigger(n, long = false)))
+    }
+
+    private fun headsetKey(ev: KeyEvent) {
+        when {
+            ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0 -> {
+                downAtMs = ev.eventTime
+                longFired = false
+                pressHandler.removeCallbacks(resolvePresses)
+            }
+            // Headsets that repeat while held: fire the long press without waiting for release.
+            ev.action == KeyEvent.ACTION_DOWN -> if (!longFired && ev.eventTime - downAtMs >= Controls.LONG_PRESS_MS) {
+                longFired = true
+                presses = 0
+                engine.perform(settings.gesture(Controls.Trigger.HEADSET_LONG))
+            }
+            ev.action == KeyEvent.ACTION_UP -> {
+                if (longFired) return
+                if (ev.eventTime - downAtMs >= Controls.LONG_PRESS_MS) {
+                    presses = 0
+                    engine.perform(settings.gesture(Controls.Trigger.HEADSET_LONG))
+                    return
+                }
+                presses++
+                pressHandler.postDelayed(resolvePresses, Controls.HEADSET_WINDOW_MS)
+            }
         }
+    }
+
+    /*
+     * Phone volume keys: no app gets the keys themselves with the screen off,
+     * but the volume change they cause is broadcast. Short combinations
+     * (up-down, down-up, 3-4 presses) become controls, and the volume is put
+     * back afterwards. Ordinary volume changes pass through untouched.
+     */
+    private val volumeSequence = Controls.VolumeSequence()
+    private var volumeReceiver: BroadcastReceiver? = null
+    private var seqStream = -1
+    private var seqStartVolume = 0
+    private var ignoreVolumeUntilMs = 0L
+    private val resolveVolume = Runnable {
+        val trigger = volumeSequence.resolve() ?: return@Runnable
+        val action = settings.gesture(trigger)
+        if (action == Controls.Action.NONE) return@Runnable
+        // Undo the volume steps the combination made.
+        ignoreVolumeUntilMs = SystemClock.uptimeMillis() + 500
+        try {
+            getSystemService(AudioManager::class.java).setStreamVolume(seqStream, seqStartVolume, 0)
+        } catch (e: Exception) {
+            Log.w(TAG, "volume restore failed", e)
+        }
+        engine.perform(action)
+    }
+
+    private fun startVolumeWatch() {
+        if (volumeReceiver != null) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val now = SystemClock.uptimeMillis()
+                if (now < ignoreVolumeUntilMs) return
+                val stream = i.getIntExtra(EXTRA_STREAM_TYPE, -1)
+                val value = i.getIntExtra(EXTRA_STREAM_VALUE, -1)
+                val prev = i.getIntExtra(EXTRA_PREV_STREAM_VALUE, -1)
+                if (stream < 0 || value < 0 || prev < 0 || value == prev) return
+                if (volumeSequence.press(value > prev, now)) {
+                    seqStream = stream
+                    seqStartVolume = prev
+                }
+                pressHandler.removeCallbacks(resolveVolume)
+                pressHandler.postDelayed(resolveVolume, Controls.WINDOW_MS)
+            }
+        }
+        val filter = IntentFilter(VOLUME_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, filter, RECEIVER_EXPORTED) else registerReceiver(r, filter)
+        volumeReceiver = r
+    }
+
+    private fun stopVolumeWatch() {
+        volumeReceiver?.let { unregisterReceiver(it) }
+        volumeReceiver = null
+        pressHandler.removeCallbacks(resolveVolume)
     }
 
     private fun startMediaSession() {
@@ -298,18 +384,18 @@ class IntercomService : Service() {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
                 } ?: return false
-                if (ev.action != KeyEvent.ACTION_DOWN || ev.repeatCount > 0) return true
                 when (ev.keyCode) {
                     KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                        // Count presses: 1 = talk/mute, 2 = switch mode, 3 = next song.
-                        presses++
-                        pressHandler.removeCallbacks(resolvePresses)
-                        pressHandler.postDelayed(resolvePresses, MULTI_PRESS_MS)
+                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> headsetKey(ev)
+                    KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                        if (ev.action != KeyEvent.ACTION_DOWN || ev.repeatCount > 0) return true
+                        val t = if (ev.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                            Controls.Trigger.HEADSET_NEXT
+                        } else {
+                            Controls.Trigger.HEADSET_PREV
+                        }
+                        engine.perform(settings.gesture(t))
                     }
-                    // Most earbuds turn a double tap into "next" and a triple tap into "previous".
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> engine.headsetDoubleTap()
-                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> engine.music.next()
                     else -> return false
                 }
                 return true
@@ -332,7 +418,10 @@ class IntercomService : Service() {
         private const val TAG = "IntercomService"
         private const val CHANNEL = "intercom"
         private const val NOTIFICATION_ID = 1
-        private const val MULTI_PRESS_MS = 450L
+        private const val VOLUME_CHANGED = "android.media.VOLUME_CHANGED_ACTION"
+        private const val EXTRA_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
+        private const val EXTRA_STREAM_VALUE = "android.media.EXTRA_VOLUME_STREAM_VALUE"
+        private const val EXTRA_PREV_STREAM_VALUE = "android.media.EXTRA_PREV_VOLUME_STREAM_VALUE"
         const val ACTION_START = "com.mamaddoom.ridetalk.START"
         const val ACTION_STOP = "com.mamaddoom.ridetalk.STOP"
         const val ACTION_MUTE = "com.mamaddoom.ridetalk.MUTE"

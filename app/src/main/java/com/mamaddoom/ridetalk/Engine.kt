@@ -404,6 +404,29 @@ class Engine(
         notifyState()
     }
 
+    /** Runs a hands-free control mapped in settings (headset taps, volume-key combos). */
+    fun perform(action: Controls.Action) {
+        when (action) {
+            Controls.Action.NONE -> return
+            Controls.Action.TALK -> headsetButton()
+            Controls.Action.SWITCH_MODE -> headsetDoubleTap()
+            Controls.Action.MUTE -> {
+                setMuted(!muted)
+                playCue(if (muted) Mixer.Cue.MUTED else Mixer.Cue.UNMUTED)
+            }
+            Controls.Action.PLAY_PAUSE -> toggleMusic()
+            Controls.Action.NEXT_TRACK -> music.next()
+            Controls.Action.PREV_TRACK -> music.previous()
+            Controls.Action.MUSIC_UP, Controls.Action.MUSIC_DOWN -> {
+                val step = if (action == Controls.Action.MUSIC_UP) MUSIC_STEP else -MUSIC_STEP
+                settings.musicVolume = (settings.musicVolume + step).coerceIn(0, 100)
+                applySettings()
+                playCue(Mixer.Cue.TICK)
+            }
+        }
+        notifyState()
+    }
+
     /** Wi-Fi came back or changed: announce ourselves at once instead of waiting a second. */
     override fun onNetworkChanged() {
         ctl.postDelayed(::sendBeacon, 300)
@@ -952,6 +975,7 @@ class Engine(
          * "weak signal" and come straight back when packets arrive.
          */
         const val PEER_TIMEOUT_MS = 30_000L
+        const val MUSIC_STEP = 15
         /** Nothing heard for this long: show the rider as weak / reconnecting. */
         const val WEAK_MS = 2500L
         /** Keep audio up this long after the last rider drops, to ride out short gaps. */

@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
@@ -467,6 +468,7 @@ class MainActivity : Activity() {
             settings.echoGuard = it
             engine?.applySettings()
         }
+        setupControls()
         switch(R.id.swAntiFeedback, settings.antiFeedback) {
             settings.antiFeedback = it
             engine?.applySettings()
@@ -601,6 +603,107 @@ class MainActivity : Activity() {
             }
         }
         return true
+    }
+
+    // ---------------------------------------------------------------- hands-free controls
+
+    private lateinit var presetButtons: Map<Controls.Preset, Button>
+
+    private fun setupControls() {
+        presetButtons = mapOf(
+            Controls.Preset.STANDARD to findViewById(R.id.btnPresetStandard),
+            Controls.Preset.HEADSET_ONLY to findViewById(R.id.btnPresetHeadset),
+            Controls.Preset.MUSIC_FIRST to findViewById(R.id.btnPresetMusic),
+        )
+        for ((preset, button) in presetButtons) {
+            button.setOnClickListener { v ->
+                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                settings.applyPreset(preset)
+                renderControls()
+            }
+        }
+        renderControls()
+    }
+
+    private fun renderControls() {
+        val headset = findViewById<LinearLayout>(R.id.gestureListHeadset)
+        val volume = findViewById<LinearLayout>(R.id.gestureListVolume)
+        headset.removeAllViews()
+        volume.removeAllViews()
+        for (t in Controls.Trigger.values()) (if (t.isVolume) volume else headset).addView(gestureRow(t))
+        val current = settings.gesturePreset
+        for ((preset, button) in presetButtons) button.isSelected = preset == current
+    }
+
+    private fun gestureRow(t: Controls.Trigger): View {
+        val action = settings.gesture(t)
+        return LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(52)
+            background = getDrawable(R.drawable.button)
+            setPaddingRelative(dp(14), dp(6), dp(12), dp(6))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) }
+            addView(TextView(context).apply {
+                text = getString(triggerLabel(t))
+                setTextColor(getColor(R.color.text))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(TextView(context).apply {
+                text = "${getString(actionLabel(action))}  ▾"
+                setTextColor(getColor(if (action == Controls.Action.NONE) R.color.text_dim else R.color.accent))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                gravity = Gravity.END
+                maxWidth = resources.displayMetrics.widthPixels / 2
+                setPaddingRelative(dp(8), 0, 0, 0)
+            })
+            setOnClickListener { pickAction(t) }
+        }
+    }
+
+    private fun pickAction(t: Controls.Trigger) {
+        val actions = Controls.Action.values()
+        val labels = actions.map { getString(actionLabel(it)) }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("${getString(triggerLabel(t))} — ${getString(R.string.controls_pick)}")
+            .setSingleChoiceItems(labels, actions.indexOf(settings.gesture(t))) { dialog, i ->
+                settings.setGesture(t, actions[i])
+                renderControls()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun triggerLabel(t: Controls.Trigger) = when (t) {
+        Controls.Trigger.HEADSET_1 -> R.string.trig_HEADSET_1
+        Controls.Trigger.HEADSET_2 -> R.string.trig_HEADSET_2
+        Controls.Trigger.HEADSET_3 -> R.string.trig_HEADSET_3
+        Controls.Trigger.HEADSET_4 -> R.string.trig_HEADSET_4
+        Controls.Trigger.HEADSET_LONG -> R.string.trig_HEADSET_LONG
+        Controls.Trigger.HEADSET_NEXT -> R.string.trig_HEADSET_NEXT
+        Controls.Trigger.HEADSET_PREV -> R.string.trig_HEADSET_PREV
+        Controls.Trigger.VOL_UP_DOWN -> R.string.trig_VOL_UP_DOWN
+        Controls.Trigger.VOL_DOWN_UP -> R.string.trig_VOL_DOWN_UP
+        Controls.Trigger.VOL_UP_3 -> R.string.trig_VOL_UP_3
+        Controls.Trigger.VOL_DOWN_3 -> R.string.trig_VOL_DOWN_3
+        Controls.Trigger.VOL_UP_4 -> R.string.trig_VOL_UP_4
+        Controls.Trigger.VOL_DOWN_4 -> R.string.trig_VOL_DOWN_4
+    }
+
+    private fun actionLabel(a: Controls.Action) = when (a) {
+        Controls.Action.NONE -> R.string.act_NONE
+        Controls.Action.TALK -> R.string.act_TALK
+        Controls.Action.SWITCH_MODE -> R.string.act_SWITCH_MODE
+        Controls.Action.MUTE -> R.string.act_MUTE
+        Controls.Action.PLAY_PAUSE -> R.string.act_PLAY_PAUSE
+        Controls.Action.NEXT_TRACK -> R.string.act_NEXT_TRACK
+        Controls.Action.PREV_TRACK -> R.string.act_PREV_TRACK
+        Controls.Action.MUSIC_UP -> R.string.act_MUSIC_UP
+        Controls.Action.MUSIC_DOWN -> R.string.act_MUSIC_DOWN
     }
 
     private var pendingGroupCode = ""
@@ -1059,6 +1162,10 @@ class MainActivity : Activity() {
     }
 
     private fun renderMusic(e: Engine?, st: Engine.State?) {
+        // Headset/volume-key controls can change the music volume too.
+        findViewById<SeekBar>(R.id.seekMusic).let {
+            if (!it.isPressed && it.progress != settings.musicVolume) it.progress = settings.musicVolume
+        }
         val role = settings.role
         val talkPhone = role == Settings.Role.TALK
         musicRoleNote.visibility = if (talkPhone) View.VISIBLE else View.GONE

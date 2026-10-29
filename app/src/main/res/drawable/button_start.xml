@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/ripple">
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#33FFFFFF">
     <item>
         <selector android:enterFadeDuration="250" android:exitFadeDuration="250">
+            <!-- Running: ink-black "stop", like the helmet. -->
             <item android:state_activated="true">
-                <shape><solid android:color="@color/danger_dark" /><stroke android:width="1.5dp" android:color="@color/danger" /><corners android:radius="28dp" /></shape>
+                <shape><solid android:color="@color/text" /><corners android:radius="28dp" /></shape>
             </item>
             <item>
-                <shape><solid android:color="@color/ok" /><corners android:radius="28dp" /></shape>
+                <shape>
+                    <gradient android:angle="0" android:startColor="@color/accent" android:endColor="#FF6FAE" />
+                    <corners android:radius="28dp" />
+                </shape>
             </item>
         </selector>
     </item>
