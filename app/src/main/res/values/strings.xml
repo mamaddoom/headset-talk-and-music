@@ -288,7 +288,7 @@
     <string name="update_allow">Allow “Install unknown apps” for Helmet Media, then come back and tap again.</string>
     <string name="update_banner">⬆ New version %1$s ready — tap to install</string>
     <string name="theme_icon_note">The home-screen icon changes after you leave the app (not while the intercom is on).</string>
-    <string name="sec_connection">🌐 Connection</string>
+    <string name="sec_link_mode">🌐 Connection</string>
     <string name="conn_hotspot">📶\nHotspot</string>
     <string name="conn_online">🌍\nOnline (beta)</string>
     <string name="online_code">🔑 Group code (required online)</string>

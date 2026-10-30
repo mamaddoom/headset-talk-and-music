@@ -380,7 +380,7 @@
                     <!-- Connection: hotspot or online (beta) -->
                     <LinearLayout style="@style/Card" android:layout_marginTop="4dp">
 
-                        <TextView style="@style/CardTitle" android:text="@string/sec_connection" />
+                        <TextView style="@style/CardTitle" android:text="@string/sec_link_mode" />
                         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
                             <Button android:id="@+id/btnConnHotspot" style="@style/BigButton" android:layout_height="72dp" android:text="@string/conn_hotspot" android:textSize="15sp" />
                             <Button android:id="@+id/btnConnOnline" style="@style/BigButton" android:layout_height="72dp" android:text="@string/conn_online" android:textSize="15sp" />

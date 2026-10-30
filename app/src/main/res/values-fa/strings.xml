@@ -288,7 +288,7 @@
     <string name="update_allow">«نصب برنامه‌های ناشناس» را برای Helmet Media مجاز کنید، برگردید و دوباره بزنید.</string>
     <string name="update_banner">⬆ نسخهٔ جدید %1$s آماده است — برای نصب بزنید</string>
     <string name="theme_icon_note">آیکون روی صفحهٔ گوشی بعد از بیرون رفتن از برنامه عوض می‌شود (نه وقتی اینترکام روشن است).</string>
-    <string name="sec_connection">🌐 اتصال</string>
+    <string name="sec_link_mode">🌐 اتصال</string>
     <string name="conn_hotspot">📶\nهات‌اسپات</string>
     <string name="conn_online">🌍\nآنلاین (بتا)</string>
     <string name="online_code">🔑 کد گروه (برای آنلاین لازم است)</string>
