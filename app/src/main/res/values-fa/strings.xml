@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Helmet Media</string>
+    <string name="app_name">Helmet Media Online Beta</string>
     <string name="notif_channel">اینترکام</string>
     <string name="notif_starting">در حال روشن کردن اینترکام…</string>
     <string name="notif_connected">متصل: %1$s</string>
@@ -288,4 +288,22 @@
     <string name="update_allow">«نصب برنامه‌های ناشناس» را برای Helmet Media مجاز کنید، برگردید و دوباره بزنید.</string>
     <string name="update_banner">⬆ نسخهٔ جدید %1$s آماده است — برای نصب بزنید</string>
     <string name="theme_icon_note">آیکون روی صفحهٔ گوشی بعد از بیرون رفتن از برنامه عوض می‌شود (نه وقتی اینترکام روشن است).</string>
+    <string name="sec_connection">🌐 اتصال</string>
+    <string name="conn_hotspot">📶\nهات‌اسپات</string>
+    <string name="conn_online">🌍\nآنلاین (بتا)</string>
+    <string name="online_code">🔑 کد گروه (برای آنلاین لازم است)</string>
+    <string name="online_code_hint">مثلاً sunset-ride-2026</string>
+    <string name="online_code_note">همهٔ اعضای گروه همین کد را وارد می‌کنند. حداقل ۸ حرف؛ هرچه بلندتر امن‌تر. صدا و موزیک قبل از خروج از گوشی با این کد رمزگذاری می‌شود، پس نه سرور و نه غریبه‌ها چیزی نمی‌شنوند.</string>
+    <string name="online_code_short">⚠️ کد باید حداقل ۸ حرف باشد</string>
+    <string name="online_servers">🛰 سرور</string>
+    <string name="online_servers_note">«خودکار» بهترین سرور را انتخاب می‌کند و اگر کار نکرد سراغ بعدی می‌رود؛ همهٔ گوشی‌ها یک ترتیب دارند پس گروه روی یک سرور جمع می‌شود. اگر دستی انتخاب کنید، همهٔ اعضای گروه باید همان سرور را انتخاب کنند.</string>
+    <string name="online_auto">⭐ خودکار (اول بهترین)</string>
+    <string name="online_score">امتیاز %1$d</string>
+    <string name="online_no_code">🔑 برای آنلاین شدن یک کد گروه (۸ حرف یا بیشتر) وارد کنید</string>
+    <string name="online_connecting">⏳ در حال اتصال به %1$s…</string>
+    <string name="online_connected">🌍 آنلاین از طریق %1$s</string>
+    <string name="online_connected_rtt">🌍 آنلاین از طریق %1$s · %2$d میلی‌ثانیه</string>
+    <string name="online_offline">⚠️ اینترنت یا سرور در دسترس نیست، دوباره تلاش می‌کند…</string>
+    <string name="online_off">با زدن «شروع» وصل می‌شود</string>
+    <string name="online_restart">در حال تغییر… اینترکام دوباره شروع می‌شود</string>
 </resources>

@@ -76,9 +76,19 @@ class Updater(private val context: Context, private val onChange: () -> Unit) {
         c.setRequestProperty("Accept", "application/vnd.github+json")
         try {
             if (c.responseCode != 200) throw IllegalStateException("HTTP ${c.responseCode}")
-            val json = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
-            // Tags are "v1.0.<build>"; the build number is the version code.
-            val name = json.getString("tag_name").removePrefix("v")
+            // Online beta: newest release whose tag is "online-v…" (the main app's releases are separate).
+            val all = org.json.JSONArray(c.inputStream.bufferedReader().use { it.readText() })
+            var json: JSONObject? = null
+            for (i in 0 until all.length()) {
+                val r = all.getJSONObject(i)
+                if (!r.optBoolean("draft") && r.optString("tag_name").startsWith(TAG_PREFIX)) {
+                    json = r
+                    break
+                }
+            }
+            if (json == null) return Triple(0L, "", "")
+            // Tags are "online-v1.0.<build>"; the build number is the version code.
+            val name = json.getString("tag_name").removePrefix(TAG_PREFIX)
             val code = name.substringAfterLast('.').toLongOrNull() ?: 0L
             val assets = json.getJSONArray("assets")
             var url = ""
@@ -105,10 +115,10 @@ class Updater(private val context: Context, private val onChange: () -> Unit) {
             return false
         }
         val dm = context.getSystemService(DownloadManager::class.java)
-        val file = "HelmetMedia-$latestName.apk"
+        val file = "HelmetMediaOnlineBeta-$latestName.apk"
         context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.resolve(file)?.delete()
         val req = DownloadManager.Request(Uri.parse(apkUrl))
-            .setTitle("Helmet Media $latestName")
+            .setTitle("Helmet Media Online Beta $latestName")
             .setMimeType(APK_MIME)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, file)
@@ -166,7 +176,8 @@ class Updater(private val context: Context, private val onChange: () -> Unit) {
     }
 
     companion object {
-        private const val LATEST_URL = "https://api.github.com/repos/mamaddoom/headset-talk-and-music/releases/latest"
+        private const val LATEST_URL = "https://api.github.com/repos/mamaddoom/headset-talk-and-music/releases?per_page=20"
+        private const val TAG_PREFIX = "online-v"
         private const val APK_MIME = "application/vnd.android.package-archive"
         private const val AUTO_INTERVAL_MS = 12 * 60 * 60 * 1000L
     }

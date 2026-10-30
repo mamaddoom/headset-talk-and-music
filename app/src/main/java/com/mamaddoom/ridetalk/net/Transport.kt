@@ -35,7 +35,7 @@ class Transport(
     context: Context,
     val myId: Int,
     private val listener: Listener,
-) {
+) : Link {
     interface Listener {
         /** Called on the receive thread. [payload] is positioned after the header. */
         fun onPacket(header: Protocol.Header, from: InetSocketAddress, payload: ByteBuffer)
@@ -53,21 +53,21 @@ class Transport(
     private var rxThread: Thread? = null
 
     /** Unicast destinations, maintained by the engine from live peers. */
-    @Volatile var peerAddresses: List<InetSocketAddress> = emptyList()
+    @Volatile override var peerAddresses: List<InetSocketAddress> = emptyList()
 
     /** Group code encryption; null = open group. Packets of the other kind are dropped. */
-    @Volatile var crypto: PacketCrypto? = null
+    @Volatile override var crypto: PacketCrypto? = null
     private var byeSeq = 0
     private val sealBuf = object : ThreadLocal<ByteArray>() {
         override fun initialValue() = ByteArray(Protocol.MAX_PACKET + PacketCrypto.OVERHEAD + 64)
     }
 
-    val boundToWifi get() = wifiNetwork != null
+    override val boundToWifi get() = wifiNetwork != null
 
     /** Signal of the hotspot we are joined to (dBm), and its band (MHz); null on the hotspot itself. */
-    @Volatile var wifiRssi: Int? = null
+    @Volatile override var wifiRssi: Int? = null
         private set
-    @Volatile var wifiMhz: Int? = null
+    @Volatile override var wifiMhz: Int? = null
         private set
 
     private val wifiCallback = object : ConnectivityManager.NetworkCallback() {
@@ -98,7 +98,7 @@ class Transport(
         }
     }
 
-    fun start() {
+    override fun start() {
         if (running) return
         running = true
         val request = NetworkRequest.Builder()
@@ -115,7 +115,7 @@ class Transport(
         rxThread = Thread(::receiveLoop, "rt-net-rx").also { it.start() }
     }
 
-    fun stop() {
+    override fun stop() {
         if (!running) return
         // Best effort goodbye so the other side drops us immediately.
         val buf = ByteBuffer.allocate(Protocol.HEADER)
@@ -209,7 +209,7 @@ class Transport(
     }
 
     /** Sends to all known peers. Safe to call from any thread. */
-    fun sendToPeers(data: ByteArray, len: Int) {
+    override fun sendToPeers(data: ByteArray, len: Int) {
         val s = socket ?: return
         val peers = peerAddresses
         if (peers.isEmpty()) return
@@ -224,7 +224,7 @@ class Transport(
     }
 
     /** Sends a beacon to every reachable broadcast address, the Wi-Fi gateway and known peers. */
-    fun sendBeacon(data: ByteArray, len: Int) {
+    override fun sendBeacon(data: ByteArray, len: Int) {
         val s = socket ?: return
         val (out, n) = seal(data, len)
         val targets = LinkedHashSet<InetAddress>()

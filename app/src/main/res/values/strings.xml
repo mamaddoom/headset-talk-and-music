@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Helmet Media</string>
+    <string name="app_name">Helmet Media Online Beta</string>
     <string name="notif_channel">Intercom</string>
     <string name="notif_starting">Starting intercom…</string>
     <string name="notif_connected">Connected: %1$s</string>
@@ -288,4 +288,22 @@
     <string name="update_allow">Allow “Install unknown apps” for Helmet Media, then come back and tap again.</string>
     <string name="update_banner">⬆ New version %1$s ready — tap to install</string>
     <string name="theme_icon_note">The home-screen icon changes after you leave the app (not while the intercom is on).</string>
+    <string name="sec_connection">🌐 Connection</string>
+    <string name="conn_hotspot">📶\nHotspot</string>
+    <string name="conn_online">🌍\nOnline (beta)</string>
+    <string name="online_code">🔑 Group code (required online)</string>
+    <string name="online_code_hint">e.g. sunset-ride-2026</string>
+    <string name="online_code_note">Everyone in the group types the same code. At least 8 characters; longer is safer. All voice and music is encrypted with it before leaving the phone, so the server and strangers can’t hear anything.</string>
+    <string name="online_code_short">⚠️ The code needs at least 8 characters</string>
+    <string name="online_servers">🛰 Server</string>
+    <string name="online_servers_note">Automatic uses the best server and moves to the next if it fails; every phone uses the same order, so the group meets on the same server. If you pick one by hand, everyone in the group must pick the same one.</string>
+    <string name="online_auto">⭐ Automatic (best first)</string>
+    <string name="online_score">score %1$d</string>
+    <string name="online_no_code">🔑 Type a group code (8+ characters) to go online</string>
+    <string name="online_connecting">⏳ Connecting to %1$s…</string>
+    <string name="online_connected">🌍 Online via %1$s</string>
+    <string name="online_connected_rtt">🌍 Online via %1$s · %2$d ms</string>
+    <string name="online_offline">⚠️ No internet or no server reachable, retrying…</string>
+    <string name="online_off">Starts when you press Start</string>
+    <string name="online_restart">Switching… the intercom restarts</string>
 </resources>

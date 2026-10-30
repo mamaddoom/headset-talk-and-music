@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (Online Beta)
 
 on:
   push:
@@ -93,6 +93,16 @@ jobs:
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
+      # Measures the public relay servers from here (connect time, round trip,
+      # loss at voice packet rate). Informational: never blocks the build.
+      - name: Probe relay servers
+        continue-on-error: true
+        env:
+          PROBE_RELAYS: "1"
+        run: |
+          ./gradlew --no-daemon testDebugUnitTest --tests '*RelayProbeTest*' --rerun || true
+          cat app/build/relay-probe.txt || echo "no probe report"
+
       - name: Build signed release APK
         run: ./gradlew --no-daemon assembleRelease lintDebug
 
@@ -101,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           version="1.0.${GITHUB_RUN_NUMBER}"
-          out="HelmetMedia-${version}.apk"
+          out="HelmetMediaOnlineBeta-${version}.apk"
           cp app/build/outputs/apk/release/app-release.apk "$out"
           bt="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)"
           "${bt}apksigner" verify --print-certs "$out" | head -3
@@ -111,7 +121,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HelmetMedia-${{ steps.apk.outputs.version }}
+          name: HelmetMediaOnlineBeta-${{ steps.apk.outputs.version }}
           path: ${{ steps.apk.outputs.file }}
 
       - uses: actions/upload-artifact@v4
@@ -126,10 +136,12 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.apk.outputs.version }}
-          name: Helmet Media ${{ steps.apk.outputs.version }}
+          # Separate from the main app: own tag prefix, marked pre-release, never "latest".
+          tag_name: online-v${{ steps.apk.outputs.version }}
+          name: Helmet Media Online Beta ${{ steps.apk.outputs.version }}
           target_commitish: ${{ github.sha }}
-          make_latest: true
+          prerelease: true
+          make_latest: false
           files: ${{ steps.apk.outputs.file }}
           body: |
             Build from `${{ github.ref_name }}` @ ${{ github.sha }}.

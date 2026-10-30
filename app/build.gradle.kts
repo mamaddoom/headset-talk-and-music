@@ -8,7 +8,8 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mamaddoom.ridetalk"
+        // Online beta: its own app id, so it installs next to the main Helmet Media app.
+        applicationId = "com.mamaddoom.helmetmedia.online"
         minSdk = 26
         targetSdk = 35
         // CI build number, so every downloaded APK installs over the previous one.
