@@ -1027,10 +1027,14 @@ class Engine(
         if (n <= 0) return
         val frame = opusOut.copyOf(n)
         voiceHistory.addFirst(frame)
-        // Online the relay link is TCP (no loss to repair), so send each frame once.
-        while (voiceHistory.size > (if (online) 1 else Protocol.VOICE_REDUNDANCY)) voiceHistory.removeLast()
-        val len = Protocol.encodeFrames(voiceBuf, Protocol.TYPE_VOICE, myId, voiceSeq++, voiceHistory)
-        transport.sendToPeers(voiceBuf.array(), len)
+        // Online the relay link is TCP (nothing to repair) but free relays cap the packet
+        // rate: two frames go out together every 40 ms instead of one every 20 ms.
+        while (voiceHistory.size > (if (online) ONLINE_BATCH else Protocol.VOICE_REDUNDANCY)) voiceHistory.removeLast()
+        val seq = voiceSeq++
+        if (!online || seq % ONLINE_BATCH == ONLINE_BATCH - 1) {
+            val len = Protocol.encodeFrames(voiceBuf, Protocol.TYPE_VOICE, myId, seq, voiceHistory)
+            transport.sendToPeers(voiceBuf.array(), len)
+        }
         mixer?.localSpeechAtMs = System.currentTimeMillis()
         if (micTesting) loopback.voice.put(loopbackSeq++, frame)
     }
@@ -1071,9 +1075,11 @@ class Engine(
             frame = musicEncoder.encode(pcm) ?: return
             seq = musicSeq.getAndIncrement()
             musicHistory.addFirst(frame)
-            while (musicHistory.size > musicRedundancy) musicHistory.removeLast()
-            val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
-            transport.sendToPeers(musicBuf.array(), len)
+            while (musicHistory.size > (if (online) ONLINE_BATCH else musicRedundancy)) musicHistory.removeLast()
+            if (!online || seq % ONLINE_BATCH == ONLINE_BATCH - 1) {
+                val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
+                transport.sendToPeers(musicBuf.array(), len)
+            }
         }
         if (playLocally) {
             // Our own music goes through the same buffer (and decoder) as everyone else's: in sync.
@@ -1214,6 +1220,8 @@ class Engine(
         const val CALL_START_MS = 900L
         const val MIN_ONLINE_CODE = 8
         const val ONLINE_MUSIC_BITRATE = 64_000
+        /** Frames per relay packet online (packet rate halved to 25/s per stream). */
+        const val ONLINE_BATCH = 2
         const val CALL_END_MS = 2000L
         val FIXED_PHRASES = intArrayOf(
             R.string.say_mode_music, R.string.say_mode_call, R.string.say_mic_on, R.string.say_mic_off,
