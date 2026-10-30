@@ -112,7 +112,6 @@
     <string name="drive_no_music">آهنگی در لیست پخش نیست</string>
     <string name="drive_screen_on">روشن ماندن صفحه در صفحهٔ رانندگی</string>
     <string name="cues">صدای کوتاه هنگام ورود یا خروج همراه</string>
-    <string name="cues_note">وقتی کسی وصل می‌شود یک صدای رو به بالا، و وقتی قطع می‌شود یک صدای رو به پایین می‌شنوید.</string>
     <string name="anti_feedback">جلوگیری از سوت و اکو</string>
     <string name="anti_feedback_note">وقتی نفر دیگری صحبت می‌کند، میکروفن شما کم می‌شود مگر اینکه خودتان واضح صحبت کنید. جلوی سوت کشیدن را وقتی گوشی‌ها روی بلندگو و نزدیک هم هستند می‌گیرد. برای صحبت کاملاً همزمان خاموشش کنید.</string>
     <string name="group_code">کد گروه (اختیاری)</string>

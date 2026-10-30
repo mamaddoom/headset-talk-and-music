@@ -112,7 +112,6 @@
     <string name="drive_no_music">No songs in the playlist</string>
     <string name="drive_screen_on">Keep screen on in driving screen</string>
     <string name="cues">Sound when a rider joins or leaves</string>
-    <string name="cues_note">A short rising tone when someone connects, a falling tone when someone drops out.</string>
     <string name="anti_feedback">Anti-feedback (no howling or echo)</string>
     <string name="anti_feedback_note">While someone else talks, your mic is turned down unless you talk clearly yourself. Prevents howling when phones are on speaker near each other. Turn off for fully simultaneous talking.</string>
     <string name="group_code">Group code (optional)</string>
