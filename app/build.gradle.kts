@@ -23,6 +23,7 @@ android {
         if (ksPath != null && file(ksPath).exists()) {
             create("release") {
                 storeFile = file(ksPath)
+                if (ksPath.endsWith(".p12")) storeType = "pkcs12"
                 storePassword = System.getenv("RIDETALK_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("RIDETALK_KEY_ALIAS")
                 keyPassword = System.getenv("RIDETALK_KEY_PASSWORD")

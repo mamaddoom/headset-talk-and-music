@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 30
     env:
       HAS_SECRET: ${{ secrets.RIDETALK_KEYSTORE_BASE64 != '' }}
+      HAS_SEED: ${{ secrets.SIGNING_SEED != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,12 +28,14 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Signing key. Preferred: repository secrets (Settings > Secrets and variables > Actions):
-      #   RIDETALK_KEYSTORE_BASE64, RIDETALK_KEYSTORE_PASSWORD, RIDETALK_KEY_ALIAS, RIDETALK_KEY_PASSWORD
-      # Without secrets, a key is generated once and kept in the Actions cache so that
-      # successive builds keep the same signature and install as updates.
+      # Signing key, in order of preference (Settings > Secrets and variables > Actions):
+      #   1. SIGNING_SEED: one password; tools/derive_keystore.py turns it into the same
+      #      key on every run. Permanent, and the key itself is never stored anywhere.
+      #   2. RIDETALK_KEYSTORE_BASE64 + _PASSWORD + RIDETALK_KEY_ALIAS + _KEY_PASSWORD.
+      #   3. Neither: a key generated once and kept in the Actions cache (GitHub drops
+      #      cache entries unused for 7 days, so this is only for trying things out).
       - name: Restore cached signing key
-        if: ${{ env.HAS_SECRET != 'true' }}
+        if: ${{ env.HAS_SEED != 'true' && env.HAS_SECRET != 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.ridetalk-signing
@@ -44,9 +47,22 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.RIDETALK_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RIDETALK_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RIDETALK_KEY_PASSWORD }}
+          SIGNING_SEED: ${{ secrets.SIGNING_SEED }}
         run: |
           set -euo pipefail
-          if [ -n "${KEYSTORE_BASE64}" ]; then
+          if [ -n "${SIGNING_SEED}" ]; then
+            python3 -c "import cryptography" 2>/dev/null ||
+              python3 -m pip install --quiet --break-system-packages "cryptography>=41"
+            pass="$(openssl rand -hex 16)"
+            echo "::add-mask::$pass"
+            python3 tools/derive_keystore.py "$RUNNER_TEMP/release.p12" "$pass"
+            {
+              echo "RIDETALK_KEYSTORE=$RUNNER_TEMP/release.p12"
+              echo "RIDETALK_KEYSTORE_PASSWORD=$pass"
+              echo "RIDETALK_KEY_ALIAS=helmetmedia"
+              echo "RIDETALK_KEY_PASSWORD=$pass"
+            } >> "$GITHUB_ENV"
+          elif [ -n "${KEYSTORE_BASE64}" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             {
               echo "RIDETALK_KEYSTORE=$RUNNER_TEMP/release.jks"

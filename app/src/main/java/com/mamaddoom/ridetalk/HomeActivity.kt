@@ -185,6 +185,7 @@ class HomeActivity : Activity() {
         bindViews()
         applyInsets()
         wireControls()
+        setupUpdates()
         selectTab(savedInstanceState?.getInt(KEY_TAB) ?: 0, animate = false)
         // Bound for the whole activity lifetime, not just while visible: the
         // file and screen-capture pickers put us in the background, and their
@@ -212,6 +213,7 @@ class HomeActivity : Activity() {
     }
 
     override fun onDestroy() {
+        updater.release()
         statusPulse?.cancel()
         headerBob?.cancel()
         service?.removeListener(stateListener)
@@ -697,6 +699,46 @@ class HomeActivity : Activity() {
             v.isActivated = on
             v.alpha = if (on) 1f else 0.55f
         }
+    }
+
+    // ---------------------------------------------------------------- updates
+
+    private lateinit var updater: Updater
+
+    private fun setupUpdates() {
+        updater = Updater(applicationContext) { uiHandler.post { renderUpdate() } }
+        val act = View.OnClickListener { v ->
+            pop(v)
+            when (updater.status) {
+                Updater.Status.AVAILABLE -> if (!updater.downloadAndInstall()) toast(R.string.update_allow)
+                Updater.Status.DOWNLOADING, Updater.Status.CHECKING -> Unit
+                else -> updater.check()
+            }
+        }
+        findViewById<Button>(R.id.btnUpdate).setOnClickListener(act)
+        findViewById<View>(R.id.updateBanner).setOnClickListener(act)
+        renderUpdate()
+        updater.autoCheck()
+    }
+
+    private fun renderUpdate() {
+        val statusView = findViewById<TextView>(R.id.updateStatus)
+        val button = findViewById<Button>(R.id.btnUpdate)
+        val banner = findViewById<TextView>(R.id.updateBanner)
+        val current = getString(R.string.update_current, updater.currentName)
+        statusView.text = when (updater.status) {
+            Updater.Status.IDLE -> current
+            Updater.Status.CHECKING -> getString(R.string.update_checking)
+            Updater.Status.LATEST -> getString(R.string.update_latest, updater.currentName)
+            Updater.Status.AVAILABLE -> current + "\n" + getString(R.string.update_available, updater.latestName)
+            Updater.Status.DOWNLOADING -> getString(R.string.update_downloading)
+            Updater.Status.FAILED -> current + "\n" + getString(R.string.update_failed)
+        }
+        val available = updater.status == Updater.Status.AVAILABLE
+        button.setText(if (available) R.string.update_install else R.string.update_check)
+        button.isSelected = available
+        banner.visibility = if (available || updater.status == Updater.Status.DOWNLOADING) View.VISIBLE else View.GONE
+        banner.text = if (available) getString(R.string.update_banner, updater.latestName) else getString(R.string.update_downloading)
     }
 
     // ---------------------------------------------------------------- look & language

@@ -276,4 +276,15 @@
     <string name="label_theme">🎨 تم</string>
     <string name="label_language">🌐 زبان</string>
     <string name="label_name">🏷 اسم شما</string>
+    <string name="sec_update">🔄 آپدیت</string>
+    <string name="update_current">نسخهٔ این گوشی: %1$s</string>
+    <string name="update_check">🔍 بررسی آپدیت</string>
+    <string name="update_checking">در حال بررسی…</string>
+    <string name="update_latest">✅ آخرین نسخه را دارید (%1$s)</string>
+    <string name="update_available">⬆ نسخهٔ جدید %1$s آماده است</string>
+    <string name="update_install">⬇ دانلود و نصب</string>
+    <string name="update_downloading">⬇ در حال دانلود… صفحهٔ نصب خودش باز می‌شود</string>
+    <string name="update_failed">بررسی نشد. برای چند لحظه اینترنت لازم است (دیتا یا وای‌فای).</string>
+    <string name="update_allow">«نصب برنامه‌های ناشناس» را برای Helmet Media مجاز کنید، برگردید و دوباره بزنید.</string>
+    <string name="update_banner">⬆ نسخهٔ جدید %1$s آماده است — برای نصب بزنید</string>
 </resources>
