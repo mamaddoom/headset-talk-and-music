@@ -367,14 +367,17 @@
                     <LinearLayout style="@style/Card" android:layout_marginTop="4dp">
 
                         <TextView style="@style/CardTitle" android:text="@string/sec_you" />
+                        <TextView style="@style/Label" android:layout_marginTop="0dp" android:fontFamily="sans-serif-medium" android:text="@string/label_name" />
                         <EditText android:id="@+id/editName" style="@style/Field" android:layout_marginTop="0dp" android:hint="@string/name_hint" android:inputType="textPersonName" android:maxLength="24" />
 
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/label_theme" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp">
                             <Button android:id="@+id/btnThemePink" style="@style/BigButton" android:text="@string/theme_pink" android:textSize="15sp" />
                             <Button android:id="@+id/btnThemeBlue" style="@style/BigButton" android:text="@string/theme_blue" android:textSize="15sp" />
                         </LinearLayout>
 
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/label_language" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp">
                             <Button android:id="@+id/btnLangFa" style="@style/BigButton" android:text="@string/lang_fa" android:textSize="15sp" />
                             <Button android:id="@+id/btnLangEn" style="@style/BigButton" android:text="@string/lang_en" android:textSize="15sp" />
                         </LinearLayout>

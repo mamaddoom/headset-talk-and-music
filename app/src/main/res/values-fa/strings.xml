@@ -236,7 +236,7 @@
     <string name="say_on_call_anon">یک همراه پشت تلفن است</string>
     <string name="say_call_over">تماس %s تمام شد</string>
     <string name="say_call_over_anon">تماس همراه تمام شد</string>
-    <string name="sec_you">🐾 شما</string>
+    <string name="sec_you">🐾 شما · تم · زبان</string>
     <string name="theme_pink">🩷 صورتی</string>
     <string name="theme_blue">💙 آبی</string>
     <string name="lang_fa">فارسی</string>
@@ -273,4 +273,7 @@
     <string name="on_call_banner">📞 در حال تماس تلفنی هستید. اینترکام متوقف شده تا تماس خصوصی بماند و بعد از قطع تماس خودش برمی‌گردد.</string>
     <string name="music_rate">ارسال با %d کیلوبیت</string>
     <string name="music_rate_low">ارسال با %d کیلوبیت (سیگنال ضعیف، خودکار کم شد)</string>
+    <string name="label_theme">🎨 تم</string>
+    <string name="label_language">🌐 زبان</string>
+    <string name="label_name">🏷 اسم شما</string>
 </resources>

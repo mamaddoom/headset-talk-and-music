@@ -236,7 +236,7 @@
     <string name="say_on_call_anon">Rider on a phone call</string>
     <string name="say_call_over">%s is back from the call</string>
     <string name="say_call_over_anon">Call ended, rider is back</string>
-    <string name="sec_you">🐾 You</string>
+    <string name="sec_you">🐾 You · theme · language</string>
     <string name="theme_pink">🩷 Pink</string>
     <string name="theme_blue">💙 Blue</string>
     <string name="lang_fa">فارسی</string>
@@ -273,4 +273,7 @@
     <string name="on_call_banner">📞 You’re on a phone call. The intercom is paused so the call stays private, and comes back by itself when you hang up.</string>
     <string name="music_rate">Sending at %d kbit/s</string>
     <string name="music_rate_low">Sending at %d kbit/s (weak link, lowered automatically)</string>
+    <string name="label_theme">🎨 Theme</string>
+    <string name="label_language">🌐 Language</string>
+    <string name="label_name">🏷 Your name</string>
 </resources>
