@@ -716,7 +716,10 @@ class HomeActivity : Activity() {
             }
         }
         findViewById<Button>(R.id.btnUpdate).setOnClickListener(act)
-        findViewById<View>(R.id.updateBanner).setOnClickListener(act)
+        findViewById<View>(R.id.updateBanner).apply {
+            isActivated = true // highlighted tile look
+            setOnClickListener(act)
+        }
         renderUpdate()
         updater.autoCheck()
     }
