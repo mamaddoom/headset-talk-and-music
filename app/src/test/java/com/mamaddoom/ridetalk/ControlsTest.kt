@@ -47,6 +47,9 @@ class ControlsTest {
     @Test
     fun presetsCoverEveryTrigger() {
         for (p in Controls.Preset.values()) assertEquals(Controls.Trigger.values().size, p.map.size)
-        assertTrue(Controls.Preset.HEADSET_ONLY.map.filterKeys { it.isVolume }.values.all { it == Controls.Action.NONE })
+        // Out of the box only one tap does anything.
+        val simple = Controls.Preset.SIMPLE.map
+        assertEquals(Controls.Action.TALK, simple[Controls.Trigger.HEADSET_1])
+        assertTrue(simple.filterKeys { it != Controls.Trigger.HEADSET_1 }.values.all { it == Controls.Action.NONE })
     }
 }

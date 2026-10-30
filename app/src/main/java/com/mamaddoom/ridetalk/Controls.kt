@@ -20,38 +20,51 @@ object Controls {
         MUSIC_DOWN,
     }
 
-    enum class Trigger(val default: Action) {
+    /** Out of the box only one tap does something (talk); every other shortcut starts empty. */
+    enum class Trigger(val default: Action = Action.NONE) {
         HEADSET_1(Action.TALK),
-        HEADSET_2(Action.SWITCH_MODE),
-        HEADSET_3(Action.NEXT_TRACK),
-        HEADSET_4(Action.MUTE),
-        HEADSET_LONG(Action.PLAY_PAUSE),
+        HEADSET_2,
+        HEADSET_3,
+        HEADSET_4,
+        HEADSET_LONG,
         /** Most earbuds send "next" for a double tap on the bud. */
-        HEADSET_NEXT(Action.SWITCH_MODE),
+        HEADSET_NEXT,
         /** ...and "previous" for a triple tap. */
-        HEADSET_PREV(Action.NEXT_TRACK),
-        VOL_UP_DOWN(Action.SWITCH_MODE),
-        VOL_DOWN_UP(Action.TALK),
-        VOL_UP_3(Action.NONE),
-        VOL_DOWN_3(Action.NONE),
-        VOL_UP_4(Action.NONE),
-        VOL_DOWN_4(Action.NONE),
+        HEADSET_PREV,
+        VOL_UP_DOWN,
+        VOL_DOWN_UP,
+        VOL_UP_3,
+        VOL_DOWN_3,
+        VOL_UP_4,
+        VOL_DOWN_4,
         ;
 
         val isVolume get() = name.startsWith("VOL_")
     }
 
-    /** Ready-made layouts; [CUSTOM] means the user changed something. */
+    /** Ready-made layouts. */
     enum class Preset(val map: Map<Trigger, Action>) {
-        STANDARD(Trigger.values().associateWith { it.default }),
-        /** Headset only, nothing on the phone's volume keys. */
-        HEADSET_ONLY(Trigger.values().associateWith { if (it.isVolume) Action.NONE else it.default }),
+        /** The default: one tap talks, nothing else. */
+        SIMPLE(Trigger.values().associateWith { it.default }),
+        /** Everything mapped: mode switch, songs, mute, volume-key combos. */
+        FULL(
+            Trigger.values().associateWith { it.default } + mapOf(
+                Trigger.HEADSET_2 to Action.SWITCH_MODE,
+                Trigger.HEADSET_3 to Action.NEXT_TRACK,
+                Trigger.HEADSET_4 to Action.MUTE,
+                Trigger.HEADSET_LONG to Action.PLAY_PAUSE,
+                Trigger.HEADSET_NEXT to Action.SWITCH_MODE,
+                Trigger.HEADSET_PREV to Action.NEXT_TRACK,
+                Trigger.VOL_UP_DOWN to Action.SWITCH_MODE,
+                Trigger.VOL_DOWN_UP to Action.TALK,
+            ),
+        ),
         /** Music first: taps drive the player, talking stays on one tap. */
         MUSIC_FIRST(
             Trigger.values().associateWith { it.default } + mapOf(
                 Trigger.HEADSET_2 to Action.NEXT_TRACK,
                 Trigger.HEADSET_3 to Action.PREV_TRACK,
-                Trigger.HEADSET_4 to Action.SWITCH_MODE,
+                Trigger.HEADSET_LONG to Action.PLAY_PAUSE,
                 Trigger.HEADSET_NEXT to Action.NEXT_TRACK,
                 Trigger.HEADSET_PREV to Action.PREV_TRACK,
                 Trigger.VOL_UP_3 to Action.MUSIC_UP,

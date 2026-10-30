@@ -4,11 +4,11 @@
         <selector android:enterFadeDuration="250" android:exitFadeDuration="250">
             <!-- Running: ink-black "stop", like the helmet. -->
             <item android:state_activated="true">
-                <shape><solid android:color="@color/text" /><corners android:radius="28dp" /></shape>
+                <shape><solid android:color="?attr/cText" /><corners android:radius="28dp" /></shape>
             </item>
             <item>
                 <shape>
-                    <gradient android:angle="0" android:startColor="@color/accent" android:endColor="#FF6FAE" />
+                    <solid android:color="?attr/cAccent" />
                     <corners android:radius="28dp" />
                 </shape>
             </item>

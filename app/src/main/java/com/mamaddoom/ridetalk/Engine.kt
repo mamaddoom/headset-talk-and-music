@@ -7,12 +7,14 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import com.mamaddoom.ridetalk.audio.Announcer
 import com.mamaddoom.ridetalk.audio.AppAudioCapture
 import com.mamaddoom.ridetalk.audio.AudioRouter
 import com.mamaddoom.ridetalk.audio.JitterBuffer
 import com.mamaddoom.ridetalk.audio.Mixer
 import com.mamaddoom.ridetalk.audio.MusicEncoder
 import com.mamaddoom.ridetalk.audio.MusicPlayer
+import com.mamaddoom.ridetalk.audio.MusicRateControl
 import com.mamaddoom.ridetalk.audio.PeerAudio
 import com.mamaddoom.ridetalk.audio.VoiceCapture
 import com.mamaddoom.ridetalk.audio.VoiceEncoder
@@ -43,6 +45,12 @@ class Engine(
         /** Two-phone setup roles announced in the beacon. */
         @Volatile var talkPhone = false
         @Volatile var musicPhone = false
+        /** Music loss this rider reported in its last beacon (percent, or LOSS_UNKNOWN). */
+        @Volatile var musicLoss = Protocol.LOSS_UNKNOWN
+        @Volatile var musicLossAtMs = 0L
+        @Volatile var onCall = false
+        /** Name known from a beacon (the first packet may arrive before it). */
+        @Volatile var named = false
     }
 
     data class PeerInfo(
@@ -56,6 +64,8 @@ class Engine(
         val mine: Boolean,
         /** Not heard for a few seconds: link fading, waiting for it to come back. */
         val weak: Boolean,
+        /** On a phone call: their intercom is paused. */
+        val onCall: Boolean,
     )
 
     data class State(
@@ -106,6 +116,10 @@ class Engine(
         /** Wi-Fi signal (dBm) and band when this phone is a hotspot client; null on the hotspot. */
         val wifiRssi: Int?,
         val wifiMhz: Int?,
+        /** This phone is on a call: intercom paused until it ends. */
+        val onCall: Boolean,
+        /** Bitrate the shared music is sent at now (kbit/s), 0 when we send none. */
+        val musicKbps: Int,
     )
 
     val settings = Settings(context)
@@ -122,6 +136,13 @@ class Engine(
         minTarget = musicTarget(), maxTarget = 40, capacity = 64, periodMs = 20.0,
     )
     private val musicEncoder = MusicEncoder()
+    /** Lowers the music bitrate when listeners report loss (weak link), raises it again when clean. */
+    private val musicRate = MusicRateControl()
+    @Volatile private var musicRedundancy = Protocol.MUSIC_REDUNDANCY
+    /** Our own recent loss on received music, reported to the sender in our beacon. */
+    @Volatile private var rxMusicLoss = Protocol.LOSS_UNKNOWN
+    private var lastMusicPlayed = 0L
+    private var lastMusicConcealed = 0L
     /** Recently sent frames, newest first, for the redundancy containers. */
     private val voiceHistory = ArrayDeque<ByteArray>()
     private val musicHistory = ArrayDeque<ByteArray>()
@@ -188,6 +209,16 @@ class Engine(
     @Volatile private var queuedCue: Mixer.Cue? = null
     @Volatile private var queuedCueAtMs = 0L
 
+    /** A phone call (any app) is ringing or running: everything paused and private. */
+    @Volatile var onCall = false
+        private set
+    private var callSeenMs = 0L
+    private var callGoneMs = 0L
+    private var resumeMusicAfterCall = false
+
+    private var announcer: Announcer? = null
+    @Volatile private var queuedSpeech: Pair<FloatArray, Int>? = null
+
     /** Called (on the control thread) when battery saver decides to switch the intercom off. */
     @Volatile var onAutoStop: (() -> Unit)? = null
 
@@ -203,9 +234,11 @@ class Engine(
         lastPeerMs = 0
         transport.crypto = groupCrypto()
         transport.start()
+        onCall = false
         reconcileAudio()
         ctl.post(tick)
         ctl.post(keepalive)
+        ctl.post(callWatch)
         notifyState()
     }
 
@@ -248,6 +281,7 @@ class Engine(
 
     fun release() {
         stop()
+        announcer?.release()
         ctlThread.quitSafely()
     }
 
@@ -283,6 +317,8 @@ class Engine(
             talkSession || micTesting || System.currentTimeMillis() - lastPeerMs < STANDBY_DELAY_MS
         val role = settings.role
         return when {
+            // A phone call owns the headset; nothing of ours may be heard or recorded.
+            onCall -> AudioMode.OFF
             !needed -> AudioMode.OFF
             role == Settings.Role.MUSIC -> AudioMode.HIFI
             role == Settings.Role.TALK -> AudioMode.CALL
@@ -314,6 +350,10 @@ class Engine(
         queuedCue?.let {
             if (System.currentTimeMillis() - queuedCueAtMs < 3000) m.cue(it)
             queuedCue = null
+        }
+        queuedSpeech?.let {
+            if (System.currentTimeMillis() - queuedCueAtMs < 3000) m.say(it.first, it.second)
+            queuedSpeech = null
         }
         if (sco && role != Settings.Role.MUSIC && Permissions.hasMic(context)) {
             capture = VoiceCapture(router.inputDevice, this).also {
@@ -393,10 +433,10 @@ class Engine(
         when (settings.role) {
             Settings.Role.NORMAL -> {
                 val toCall = !settings.headsetMic
-                // The audio path restarts, so queue the cue for the new mixer.
-                queuedCue = if (toCall) Mixer.Cue.MODE_CALL else Mixer.Cue.MODE_MUSIC
-                queuedCueAtMs = System.currentTimeMillis()
                 setHeadsetMic(toCall)
+                // The audio path restarts; the announcement waits for the new mixer.
+                if (toCall) announce(Mixer.Cue.MODE_CALL, R.string.say_mode_call, queue = true)
+                else announce(Mixer.Cue.MODE_MUSIC, R.string.say_mode_music, queue = true)
             }
             Settings.Role.TALK -> setMuted(!muted)
             Settings.Role.MUSIC -> music.next()
@@ -412,7 +452,7 @@ class Engine(
             Controls.Action.SWITCH_MODE -> headsetDoubleTap()
             Controls.Action.MUTE -> {
                 setMuted(!muted)
-                playCue(if (muted) Mixer.Cue.MUTED else Mixer.Cue.UNMUTED)
+                if (muted) announce(Mixer.Cue.MUTED, R.string.say_mic_off) else announce(Mixer.Cue.UNMUTED, R.string.say_mic_on)
             }
             Controls.Action.PLAY_PAUSE -> toggleMusic()
             Controls.Action.NEXT_TRACK -> music.next()
@@ -488,14 +528,62 @@ class Engine(
     private fun groupCrypto(): PacketCrypto? =
         settings.groupCode.takeIf { it.isNotBlank() }?.let { PacketCrypto(it) }
 
-    private fun playCue(cue: Mixer.Cue) {
+    private fun playCue(cue: Mixer.Cue, queue: Boolean = false) {
         if (!settings.cues) return
         val m = mixer
-        if (m != null) {
+        if (m != null && !queue) {
             m.cue(cue)
         } else {
             queuedCue = cue
             queuedCueAtMs = System.currentTimeMillis()
+        }
+    }
+
+    /**
+     * Says [phrase] (with [name] filled in) when spoken announcements are on and
+     * the phone has a voice; otherwise plays [cue]. [queue]: the audio path is
+     * about to restart, so wait for the new mixer.
+     */
+    private fun announce(cue: Mixer.Cue, phrase: Int, name: String? = null, anon: Int = phrase, queue: Boolean = false) {
+        if (!settings.cues) return
+        val a = announcer
+        if (!settings.voicePrompts || a == null || !a.ready) {
+            playCue(cue, queue)
+            return
+        }
+        // An English voice can't read a Persian name: say it without the name.
+        val readable = name != null && name.isNotBlank() && (a.persian || name.all { it.code < 0x250 })
+        val text = when {
+            readable -> a.res.getString(phrase, name)
+            else -> a.res.getString(anon)
+        }
+        if (queue) {
+            queuedSpeechText = text
+            queuedCueAtMs = System.currentTimeMillis()
+        }
+        a.say(text)
+    }
+
+    /** Text that should play on the next mixer if the current one is going away. */
+    @Volatile private var queuedSpeechText: String? = null
+
+    private fun onSpeech(samples: FloatArray, rate: Int) {
+        val m = mixer
+        val waitingForRestart = queuedSpeechText != null && System.currentTimeMillis() - queuedCueAtMs < 1500
+        queuedSpeechText = null
+        if (m != null && !waitingForRestart) {
+            m.say(samples, rate)
+        } else {
+            queuedSpeech = samples to rate
+            queuedCueAtMs = System.currentTimeMillis()
+        }
+    }
+
+    /** (Re)creates the voice for announcements, e.g. after the app language changed. */
+    fun reloadVoice() {
+        main.post {
+            announcer?.release()
+            announcer = Announcer(context, settings.language, FIXED_PHRASES, ::onSpeech)
         }
     }
 
@@ -611,6 +699,8 @@ class Engine(
     private val tick = object : Runnable {
         override fun run() {
             if (!running) return
+            measureMusicLoss()
+            adaptMusicRate()
             sendBeacon()
             prunePeers()
             myIps = Transport.localAddresses()
@@ -635,8 +725,90 @@ class Engine(
         }
     }
 
+    /** Loss on the music we receive over the last second, for our beacon. */
+    private fun measureMusicLoss() {
+        val played = musicBuffer.played
+        val concealed = musicBuffer.concealed
+        val dp = played - lastMusicPlayed
+        val dc = concealed - lastMusicConcealed
+        lastMusicPlayed = played
+        lastMusicConcealed = concealed
+        rxMusicLoss = if (remoteMusicActive() && dp + dc >= 10) (dc * 100 / (dp + dc)).toInt()
+        else Protocol.LOSS_UNKNOWN
+    }
+
+    /** While we send music: follow the worst loss any listener reports. */
+    private fun adaptMusicRate() {
+        val sending = music.playing || appCapture != null
+        if (!sending) {
+            if (musicRate.level != 0) {
+                musicRate.reset()
+                applyMusicRate()
+            }
+            return
+        }
+        val now = System.currentTimeMillis()
+        val worst = peers.values
+            .filter { now - it.musicLossAtMs < 3000 && it.musicLoss != Protocol.LOSS_UNKNOWN }
+            .maxOfOrNull { it.musicLoss }
+        if (musicRate.update(worst, now)) applyMusicRate()
+    }
+
+    private fun applyMusicRate() {
+        val l = musicRate.current
+        synchronized(musicBuf) {
+            musicEncoder.bitrate = l.bitrate
+            musicRedundancy = l.redundancy
+        }
+        notifyState()
+    }
+
+    /**
+     * Phone calls: while one rings or runs (cellular or another app's call) the
+     * intercom pauses completely, so the call stays private and nobody hears it;
+     * it comes back by itself when the call ends. Debounced so a brief mode
+     * flicker doesn't drop the audio.
+     */
+    private val callWatch = object : Runnable {
+        override fun run() {
+            if (!running) return
+            val now = System.currentTimeMillis()
+            if (router.phoneCallActive()) {
+                callGoneMs = 0
+                if (callSeenMs == 0L) callSeenMs = now
+                if (!onCall && now - callSeenMs >= CALL_START_MS) callStarted()
+            } else {
+                callSeenMs = 0
+                if (callGoneMs == 0L) callGoneMs = now
+                if (onCall && now - callGoneMs >= CALL_END_MS) callEnded()
+            }
+            ctl.postDelayed(this, 500)
+        }
+    }
+
+    private fun callStarted() {
+        onCall = true
+        talkSession = false
+        resumeMusicAfterCall = music.playing
+        if (music.playing) main.post { music.pause() }
+        stopAudio()
+        sendBeacon()
+        notifyState()
+    }
+
+    private fun callEnded() {
+        onCall = false
+        sendBeacon()
+        if (resumeMusicAfterCall) main.post { music.play() }
+        resumeMusicAfterCall = false
+        reconcileAudio()
+        announce(Mixer.Cue.READY, R.string.say_intercom_back, queue = true)
+        notifyState()
+    }
+
     private fun sendBeacon() {
         var flags = 0
+        if (onCall) flags = flags or Protocol.FLAG_ON_CALL
         if (transmitting) flags = flags or Protocol.FLAG_TALKING
         val appSignal = appCapture?.hasSignal == true
         if (music.playing || appSignal) flags = flags or Protocol.FLAG_MUSIC
@@ -650,7 +822,8 @@ class Engine(
             appSignal -> context.getString(R.string.app_audio_title)
             else -> ""
         }
-        val len = Protocol.encodeBeacon(beaconBuf, myId, beaconSeq++, Protocol.Beacon(flags, settings.name, title))
+        val beacon = Protocol.Beacon(flags, settings.name, title, rxMusicLoss)
+        val len = Protocol.encodeBeacon(beaconBuf, myId, beaconSeq++, beacon)
         transport.sendBeacon(beaconBuf.array(), len)
     }
 
@@ -671,15 +844,12 @@ class Engine(
     private fun prunePeers() {
         val now = System.currentTimeMillis()
         if (peers.isNotEmpty()) lastPeerMs = now
-        var changed = false
-        for (p in peers.values) {
-            if (now - p.lastSeenMs > PEER_TIMEOUT_MS) {
-                peers.remove(p.id)
-                changed = true
-            }
+        val gone = peers.values.filter { now - it.lastSeenMs > PEER_TIMEOUT_MS }
+        for (p in gone) peers.remove(p.id)
+        if (gone.isNotEmpty()) {
+            announce(Mixer.Cue.LEAVE, R.string.say_left, gone.first().name, R.string.say_left_anon)
+            updatePeerAddresses()
         }
-        if (changed) playCue(Mixer.Cue.LEAVE)
-        if (changed) updatePeerAddresses()
     }
 
     @Synchronized
@@ -721,9 +891,10 @@ class Engine(
 
     override fun onPacket(header: Protocol.Header, from: InetSocketAddress, payload: ByteBuffer) {
         if (header.type == Protocol.TYPE_BYE) {
-            if (peers.remove(header.sender) != null) {
+            val p = peers.remove(header.sender)
+            if (p != null) {
                 updatePeerAddresses()
-                playCue(Mixer.Cue.LEAVE)
+                announce(Mixer.Cue.LEAVE, R.string.say_left, p.name, R.string.say_left_anon)
                 notifyState()
             }
             return
@@ -750,6 +921,16 @@ class Engine(
             }
             Protocol.TYPE_BEACON -> Protocol.decodeBeacon(payload)?.let {
                 peer.name = it.name
+                peer.named = true
+                peer.musicLoss = it.musicLoss
+                peer.musicLossAtMs = System.currentTimeMillis()
+                val call = it.flags and Protocol.FLAG_ON_CALL != 0
+                if (call != peer.onCall) {
+                    peer.onCall = call
+                    if (call) announce(Mixer.Cue.LEAVE, R.string.say_on_call, it.name, R.string.say_on_call_anon)
+                    else announce(Mixer.Cue.JOIN, R.string.say_call_over, it.name, R.string.say_call_over_anon)
+                    notifyState()
+                }
                 peer.musicTitle = it.title
                 peer.musicPlaying = it.flags and Protocol.FLAG_MUSIC != 0
                 peer.talkPhone = it.flags and Protocol.FLAG_TALK_PHONE != 0
@@ -763,7 +944,9 @@ class Engine(
         val existing = peers[id]
         if (existing != null) {
             // Back after a long gap (tunnel, distance): let the rider know the link returned.
-            if (now - existing.lastSeenMs > WEAK_MS * 3) playCue(Mixer.Cue.JOIN)
+            if (now - existing.lastSeenMs > WEAK_MS * 3) {
+                announce(Mixer.Cue.JOIN, R.string.say_back, existing.name, R.string.say_back_anon)
+            }
             existing.lastSeenMs = now
             if (existing.address != from) {
                 existing.address = from
@@ -775,7 +958,12 @@ class Engine(
         peers[id] = p
         lastPeerMs = now
         updatePeerAddresses()
-        playCue(Mixer.Cue.JOIN)
+        // Wait briefly for their beacon so the announcement can use their name.
+        ctl.postDelayed({
+            if (peers[id] === p) {
+                announce(Mixer.Cue.JOIN, R.string.say_joined, p.name.takeIf { p.named }, R.string.say_joined_anon)
+            }
+        }, 1200)
         reconcileSoon() // wake from battery-saver standby
         // Answer right away so the other side learns about us without waiting a second.
         ctl.post(::sendBeacon)
@@ -854,7 +1042,7 @@ class Engine(
             frame = musicEncoder.encode(pcm) ?: return
             seq = musicSeq.getAndIncrement()
             musicHistory.addFirst(frame)
-            while (musicHistory.size > Protocol.MUSIC_REDUNDANCY) musicHistory.removeLast()
+            while (musicHistory.size > musicRedundancy) musicHistory.removeLast()
             val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
             transport.sendToPeers(musicBuf.array(), len)
         }
@@ -920,6 +1108,7 @@ class Engine(
                     musicPhone = it.musicPhone,
                     mine = isMyOtherPhone(it),
                     weak = now - it.lastSeenMs > WEAK_MS,
+                    onCall = it.onCall,
                 )
             }.sortedBy { it.name },
             micLevelDb = micLevel,
@@ -959,6 +1148,8 @@ class Engine(
             micTestLeftS = ((micTestUntilMs - now + 999) / 1000).toInt().coerceAtLeast(0),
             wifiRssi = transport.wifiRssi,
             wifiMhz = transport.wifiMhz,
+            onCall = onCall,
+            musicKbps = if (music.playing || cap != null) musicRate.current.bitrate / 1000 else 0,
         )
     }
 
@@ -966,6 +1157,7 @@ class Engine(
     init {
         music.shuffle = settings.shuffle
         music.setTracks(settings.playlist, settings.trackIndex)
+        reloadVoice()
     }
 
     private companion object {
@@ -986,5 +1178,11 @@ class Engine(
         const val KEEPALIVE_MS = 40L
         const val TALK_IDLE_MS = 2500L
         const val TALK_MIN_MS = 4000L
+        const val CALL_START_MS = 900L
+        const val CALL_END_MS = 2000L
+        val FIXED_PHRASES = intArrayOf(
+            R.string.say_mode_music, R.string.say_mode_call, R.string.say_mic_on, R.string.say_mic_off,
+            R.string.say_intercom_back, R.string.say_joined_anon, R.string.say_left_anon,
+        )
     }
 }

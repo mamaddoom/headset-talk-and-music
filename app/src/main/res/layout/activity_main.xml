@@ -3,7 +3,7 @@
     android:id="@+id/frame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg">
+    android:background="?attr/cBg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,14 +26,14 @@
                 android:layout_marginEnd="10dp"
                 android:background="@drawable/art_bg"
                 android:contentDescription="@null"
-                android:src="@drawable/ic_launcher_fg" />
+                android:src="?attr/appArt" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/app_name"
-                android:textColor="@color/text"
+                android:textColor="?attr/cText"
                 android:textSize="24sp" />
 
             <ImageView
@@ -71,7 +71,7 @@
                     android:layout_marginStart="8dp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
-                    android:textColor="@color/text"
+                    android:textColor="?attr/cText"
                     android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
@@ -149,7 +149,7 @@
                                 android:layout_marginTop="4dp"
                                 android:fontFamily="sans-serif-medium"
                                 android:gravity="center"
-                                android:textColor="@color/text"
+                                android:textColor="?attr/cText"
                                 android:textSize="17sp" />
                         </LinearLayout>
                     </FrameLayout>
@@ -199,8 +199,6 @@
                         <TextView style="@style/CardTitle" android:text="@string/sec_link" />
 
                         <TextView android:id="@+id/linkQuality" style="@style/Body" android:fontFamily="sans-serif-medium" android:textSize="15sp" />
-                        <TextView android:id="@+id/route" style="@style/Note" />
-                        <TextView android:id="@+id/myIp" style="@style/Note" />
                         <TextView android:id="@+id/wifiInfo" style="@style/Note" android:visibility="gone" />
 
                         <LinearLayout
@@ -319,7 +317,7 @@
                                 android:layout_weight="0"
                                 android:background="@android:color/transparent"
                                 android:text="@string/clear_list"
-                                android:textColor="@color/text_dim"
+                                android:textColor="?attr/cTextDim"
                                 android:textSize="14sp" />
                         </LinearLayout>
 
@@ -352,7 +350,6 @@
                         <TextView style="@style/Body" android:text="@string/music_volume" />
                         <SeekBar android:id="@+id/seekMusic" style="@style/Slider" android:max="100" />
 
-                        <Switch android:id="@+id/swDuck" style="@style/BigSwitch" android:text="@string/ducking" />
 
                         <TextView android:id="@+id/syncLabel" style="@style/Label" />
                         <SeekBar android:id="@+id/seekSync" style="@style/Slider" android:max="40" />
@@ -366,8 +363,25 @@
 
                 <LinearLayout android:id="@+id/settingsColumn" style="@style/PageColumn">
 
-                    <!-- Trip setup -->
+                    <!-- You: name, look and language -->
                     <LinearLayout style="@style/Card" android:layout_marginTop="4dp">
+
+                        <TextView style="@style/CardTitle" android:text="@string/sec_you" />
+                        <EditText android:id="@+id/editName" style="@style/Field" android:layout_marginTop="0dp" android:hint="@string/name_hint" android:inputType="textPersonName" android:maxLength="24" />
+
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+                            <Button android:id="@+id/btnThemePink" style="@style/BigButton" android:text="@string/theme_pink" android:textSize="15sp" />
+                            <Button android:id="@+id/btnThemeBlue" style="@style/BigButton" android:text="@string/theme_blue" android:textSize="15sp" />
+                        </LinearLayout>
+
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                            <Button android:id="@+id/btnLangFa" style="@style/BigButton" android:text="@string/lang_fa" android:textSize="15sp" />
+                            <Button android:id="@+id/btnLangEn" style="@style/BigButton" android:text="@string/lang_en" android:textSize="15sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Trip setup -->
+                    <LinearLayout style="@style/Card">
 
                         <TextView style="@style/CardTitle" android:text="@string/sec_setup" />
                         <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/setup_intro" />
@@ -388,8 +402,8 @@
                             <TextView android:layout_width="56dp" android:layout_height="wrap_content" android:gravity="center" android:text="@string/preset1_icon" android:textSize="26sp" />
 
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="@string/preset1_title" android:textColor="@color/text" android:textSize="16sp" />
-                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/preset1_desc" android:textColor="@color/text_dim" android:textSize="13sp" />
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="@string/preset1_title" android:textColor="?attr/cText" android:textSize="16sp" />
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/preset1_desc" android:textColor="?attr/cTextDim" android:textSize="13sp" />
                             </LinearLayout>
                         </LinearLayout>
 
@@ -409,8 +423,8 @@
                             <TextView android:layout_width="56dp" android:layout_height="wrap_content" android:gravity="center" android:text="@string/preset2_icon" android:textSize="26sp" />
 
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="@string/preset2_title" android:textColor="@color/text" android:textSize="16sp" />
-                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/preset2_desc" android:textColor="@color/text_dim" android:textSize="13sp" />
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="@string/preset2_title" android:textColor="?attr/cText" android:textSize="16sp" />
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/preset2_desc" android:textColor="?attr/cTextDim" android:textSize="13sp" />
                             </LinearLayout>
                         </LinearLayout>
 
@@ -448,23 +462,56 @@
                         <TextView android:id="@+id/setupChecklist" style="@style/Body" android:layout_marginTop="10dp" android:lineSpacingMultiplier="1.35" android:textSize="14sp" />
                     </LinearLayout>
 
-                    <!-- Audio -->
+                    <!-- Sound: just the essentials, as big icons -->
                     <LinearLayout android:id="@+id/audioCard" style="@style/Card">
 
                         <TextView style="@style/CardTitle" android:text="@string/sec_audio" />
 
                         <LinearLayout android:id="@+id/audioModeRow" android:layout_width="match_parent" android:layout_height="wrap_content">
-                            <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:text="@string/mode_hifi" android:textSize="15sp" />
-                            <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:text="@string/mode_call" android:textSize="15sp" />
+                            <Button android:id="@+id/btnModeHifi" style="@style/BigButton" android:layout_height="72dp" android:text="@string/mode_hifi_short" android:textSize="15sp" />
+                            <Button android:id="@+id/btnModeCall" style="@style/BigButton" android:layout_height="72dp" android:text="@string/mode_call_short" android:textSize="15sp" />
                         </LinearLayout>
                         <TextView android:id="@+id/modeNote" style="@style/Note" />
-                        <TextView android:id="@+id/modeSaved" style="@style/Note" android:text="@string/mode_saved" />
 
-                        <LinearLayout android:id="@+id/micSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <LinearLayout style="@style/IconRow">
+                            <TextView style="@style/RowIcon" android:text="🗣" />
+                            <SeekBar android:id="@+id/seekVoice" style="@style/RowSlider" android:max="200" />
+                        </LinearLayout>
 
-                            <TextView android:id="@+id/noiseLabel" style="@style/Label" />
-                            <SeekBar android:id="@+id/seekNoise" style="@style/Slider" android:max="100" />
-                            <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/noise_note" />
+                        <LinearLayout android:id="@+id/noiseRow" style="@style/IconRow">
+                            <TextView style="@style/RowIcon" android:text="🌬" />
+                            <SeekBar android:id="@+id/seekNoise" style="@style/RowSlider" android:max="100" />
+                        </LinearLayout>
+                        <TextView android:id="@+id/noiseLabel" style="@style/Note" android:layout_marginTop="0dp" android:gravity="center" />
+
+                        <LinearLayout android:id="@+id/tileGrid" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="vertical" />
+                        <TextView style="@style/Note" android:gravity="center" android:text="@string/tiles_hint" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnAdvanced"
+                        style="@style/BigButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="14dp"
+                        android:layout_weight="0"
+                        android:text="@string/advanced_show"
+                        android:textSize="15sp" />
+
+                    <!-- Everything else, out of the way until asked for -->
+                    <LinearLayout
+                        android:id="@+id/advancedPanel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:animateLayoutChanges="true"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <LinearLayout android:id="@+id/micSection" style="@style/Card">
+
+                            <TextView style="@style/CardTitle" android:text="@string/sec_mic" />
+                            <TextView android:id="@+id/modeSaved" style="@style/Note" android:layout_marginTop="0dp" android:text="@string/mode_saved" />
+                            <TextView style="@style/Note" android:text="@string/noise_note" />
 
                             <TextView android:id="@+id/voxLabel" style="@style/Label" android:text="@string/vox_sensitivity" />
                             <SeekBar android:id="@+id/seekVox" style="@style/Slider" android:max="100" />
@@ -481,73 +528,58 @@
                             <TextView style="@style/Note" android:text="@string/mic_test_note" />
                         </LinearLayout>
 
-                        <TextView android:id="@+id/voiceVolumeLabel" style="@style/Label" android:text="@string/voice_volume" />
-                        <SeekBar android:id="@+id/seekVoice" style="@style/Slider" android:max="200" />
+                        <!-- Hands-free controls: headset taps and phone volume-key combos, each mappable. -->
+                        <LinearLayout style="@style/Card">
 
-                        <Switch android:id="@+id/swRxDenoise" style="@style/BigSwitch" android:text="@string/rx_denoise" />
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/rx_denoise_note" />
-                        <Switch android:id="@+id/swEchoGuard" style="@style/BigSwitch" android:text="@string/echo_guard" />
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/echo_guard_note" />
-                    </LinearLayout>
+                            <TextView style="@style/CardTitle" android:text="@string/sec_controls" />
+                            <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/controls_intro" />
 
-                    <!-- Hands-free controls: headset taps and phone volume-key combos, each mappable. -->
-                    <LinearLayout style="@style/Card">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+                                <Button android:id="@+id/btnPresetSimple" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_simple" android:textSize="13sp" />
+                                <Button android:id="@+id/btnPresetFull" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_full" android:textSize="13sp" />
+                                <Button android:id="@+id/btnPresetMusic" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_music_first" android:textSize="13sp" />
+                            </LinearLayout>
 
-                        <TextView style="@style/CardTitle" android:text="@string/sec_controls" />
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/controls_intro" />
+                            <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_headset" />
+                            <LinearLayout android:id="@+id/gestureListHeadset" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
 
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
-                            <Button android:id="@+id/btnPresetStandard" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_standard" android:textSize="13sp" />
-                            <Button android:id="@+id/btnPresetHeadset" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_headset_only" android:textSize="13sp" />
-                            <Button android:id="@+id/btnPresetMusic" style="@style/BigButton" android:layout_height="48dp" android:text="@string/preset_music_first" android:textSize="13sp" />
+                            <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_volume" />
+                            <LinearLayout android:id="@+id/gestureListVolume" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                            <TextView style="@style/Note" android:text="@string/controls_volume_note" />
                         </LinearLayout>
 
-                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_headset" />
-                        <LinearLayout android:id="@+id/gestureListHeadset" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                        <!-- Group & network -->
+                        <LinearLayout style="@style/Card">
 
-                        <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/controls_volume" />
-                        <LinearLayout android:id="@+id/gestureListVolume" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-                        <TextView style="@style/Note" android:text="@string/controls_volume_note" />
-                    </LinearLayout>
+                            <TextView style="@style/CardTitle" android:text="@string/sec_network" />
 
-                    <!-- Group & network -->
-                    <LinearLayout style="@style/Card">
+                            <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/connection_help" />
 
-                        <TextView style="@style/CardTitle" android:text="@string/sec_network" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
+                                <Button android:id="@+id/btnHotspot" style="@style/BigButton" android:text="@string/open_hotspot" />
+                                <Button android:id="@+id/btnWifi" style="@style/BigButton" android:text="@string/open_wifi" />
+                            </LinearLayout>
 
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/connection_help" />
+                            <TextView android:id="@+id/myIp" style="@style/Note" android:layout_marginTop="8dp" />
+                            <TextView android:id="@+id/route" style="@style/Note" />
 
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp">
-                            <Button android:id="@+id/btnHotspot" style="@style/BigButton" android:text="@string/open_hotspot" />
-                            <Button android:id="@+id/btnWifi" style="@style/BigButton" android:text="@string/open_wifi" />
+                            <TextView style="@style/Label" android:text="@string/group_code" />
+                            <EditText android:id="@+id/editGroup" style="@style/Field" android:hint="@string/group_code_hint" android:inputType="textVisiblePassword" android:maxLength="32" />
+                            <TextView style="@style/Note" android:text="@string/group_code_note" />
                         </LinearLayout>
 
-                        <EditText android:id="@+id/editName" style="@style/Field" android:layout_marginTop="12dp" android:hint="@string/name_hint" android:inputType="textPersonName" android:maxLength="24" />
+                        <!-- Battery & reliability -->
+                        <LinearLayout style="@style/Card">
 
-                        <TextView style="@style/Label" android:text="@string/group_code" />
-                        <EditText android:id="@+id/editGroup" style="@style/Field" android:hint="@string/group_code_hint" android:inputType="textVisiblePassword" android:maxLength="32" />
-                        <TextView style="@style/Note" android:text="@string/group_code_note" />
-                    </LinearLayout>
+                            <TextView style="@style/CardTitle" android:text="@string/sec_settings" />
 
-                    <!-- Battery & reliability -->
-                    <LinearLayout style="@style/Card">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                                <Button android:id="@+id/btnBattery" style="@style/BigButton" android:text="@string/battery_opt" android:textSize="14sp" />
+                                <Button android:id="@+id/btnAppSettings" style="@style/BigButton" android:text="@string/app_settings" android:textSize="14sp" />
+                            </LinearLayout>
 
-                        <TextView style="@style/CardTitle" android:text="@string/sec_settings" />
-
-                        <Switch android:id="@+id/swBatterySaver" style="@style/BigSwitch" android:layout_marginTop="0dp" android:text="@string/battery_saver" />
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/battery_saver_note" />
-
-                        <Switch android:id="@+id/swCues" style="@style/BigSwitch" android:text="@string/cues" />
-                        <Switch android:id="@+id/swAntiFeedback" style="@style/BigSwitch" android:text="@string/anti_feedback" />
-                        <TextView style="@style/Note" android:layout_marginTop="0dp" android:text="@string/anti_feedback_note" />
-                        <Switch android:id="@+id/swDriveScreen" style="@style/BigSwitch" android:text="@string/drive_screen_on" />
-
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp">
-                            <Button android:id="@+id/btnBattery" style="@style/BigButton" android:text="@string/battery_opt" android:textSize="14sp" />
-                            <Button android:id="@+id/btnAppSettings" style="@style/BigButton" android:text="@string/app_settings" android:textSize="14sp" />
+                            <TextView style="@style/Note" android:layout_marginTop="10dp" android:text="@string/guide" />
                         </LinearLayout>
-
-                        <TextView style="@style/Note" android:layout_marginTop="10dp" android:text="@string/guide" />
                     </LinearLayout>
                 </LinearLayout>
             </ScrollView>
@@ -598,7 +630,7 @@
         android:id="@+id/driveOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/bg"
+        android:background="?attr/cBg"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -606,10 +638,75 @@
         android:visibility="gone">
 
         <TextView android:id="@+id/driveStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:textColor="@color/ok" android:textSize="22sp" />
-        <TextView android:id="@+id/driveMusicTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:textColor="@color/text_dim" android:textSize="16sp" />
+        <TextView android:id="@+id/driveMusicTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:textColor="?attr/cTextDim" android:textSize="16sp" />
 
-        <Button android:id="@+id/driveTalk" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="16dp" android:layout_weight="1" android:background="@drawable/button_ptt" android:fontFamily="sans-serif-medium" android:stateListAnimator="@null" android:textAllCaps="false" android:textColor="@color/text" android:textSize="32sp" />
-        <Button android:id="@+id/driveMusic" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="16dp" android:layout_weight="1" android:background="@drawable/button" android:fontFamily="sans-serif-medium" android:stateListAnimator="@null" android:textAllCaps="false" android:textColor="@color/text" android:textSize="32sp" />
-        <Button android:id="@+id/driveExit" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="16dp" android:background="@drawable/button" android:stateListAnimator="@null" android:text="@string/drive_exit" android:textAllCaps="false" android:textColor="@color/text_dim" android:textSize="18sp" />
+        <Button android:id="@+id/driveTalk" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="16dp" android:layout_weight="1" android:background="@drawable/button_ptt" android:fontFamily="sans-serif-medium" android:stateListAnimator="@null" android:textAllCaps="false" android:textColor="?attr/cText" android:textSize="32sp" />
+        <Button android:id="@+id/driveMusic" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="16dp" android:layout_weight="1" android:background="@drawable/button" android:fontFamily="sans-serif-medium" android:stateListAnimator="@null" android:textAllCaps="false" android:textColor="?attr/cText" android:textSize="32sp" />
+        <Button android:id="@+id/driveExit" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="16dp" android:background="@drawable/button" android:stateListAnimator="@null" android:text="@string/drive_exit" android:textAllCaps="false" android:textColor="?attr/cTextDim" android:textSize="18sp" />
     </LinearLayout>
+
+    <!-- First launch: pick pink or blue and the language. -->
+    <ScrollView
+        android:id="@+id/welcomeOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/cBg"
+        android:clickable="true"
+        android:fillViewport="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:id="@+id/welcomeArt"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/art_bg"
+                android:contentDescription="@null"
+                android:src="?attr/appArt" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/app_name"
+                android:textColor="?attr/cText"
+                android:textSize="30sp" />
+
+            <TextView style="@style/Note" android:gravity="center" android:text="@string/welcome_sub" />
+
+            <TextView style="@style/Label" android:layout_marginTop="24dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="@string/welcome_style" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp">
+                <Button android:id="@+id/welcomePink" style="@style/BigButton" android:layout_height="96dp" android:text="@string/welcome_pink" android:textSize="16sp" />
+                <Button android:id="@+id/welcomeBlue" style="@style/BigButton" android:layout_height="96dp" android:text="@string/welcome_blue" android:textSize="16sp" />
+            </LinearLayout>
+
+            <TextView style="@style/Label" android:layout_marginTop="18dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="@string/welcome_lang" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp">
+                <Button android:id="@+id/welcomeFa" style="@style/BigButton" android:layout_height="64dp" android:text="@string/lang_fa" />
+                <Button android:id="@+id/welcomeEn" style="@style/BigButton" android:layout_height="64dp" android:text="@string/lang_en" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/welcomeStart"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/button_start"
+                android:fontFamily="sans-serif-medium"
+                android:stateListAnimator="@null"
+                android:text="@string/welcome_start"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp" />
+        </LinearLayout>
+    </ScrollView>
 </FrameLayout>

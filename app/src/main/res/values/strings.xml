@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RideTalk</string>
+    <string name="app_name">Kaskat Media</string>
     <string name="notif_channel">Intercom</string>
     <string name="notif_starting">Starting intercom…</string>
     <string name="notif_connected">Connected: %1$s</string>
@@ -59,7 +59,7 @@
     <string name="sec_settings">Battery &amp; reliability</string>
     <string name="name_hint">Your name (shown to the other rider)</string>
     <string name="battery_opt">Battery: no limits</string>
-    <string name="guide">For reliable use with the screen off:\n• Battery: set RideTalk to “No restrictions” / allow background activity.\n• If your phone has an “Autostart” or “Background apps” setting, allow RideTalk there (App settings).\n• Lock RideTalk in the recent-apps screen so the system does not close it.\n• Turn off “turn off hotspot automatically when idle” on the hotspot phone.\n• If Wi-Fi keeps switching to mobile data, disable the phone’s Wi-Fi assistant / smart network switch.</string>
+    <string name="guide">For reliable use with the screen off:\n• Battery: set Kaskat Media to “No restrictions” / allow background activity.\n• If your phone has an “Autostart” or “Background apps” setting, allow Kaskat Media there (App settings).\n• Lock Kaskat Media in the recent-apps screen so the system does not close it.\n• Turn off “turn off hotspot automatically when idle” on the hotspot phone.\n• If Wi-Fi keeps switching to mobile data, disable the phone’s Wi-Fi assistant / smart network switch.</string>
     <string name="perm_denied">Microphone permission is required to talk.</string>
 
     <string name="route_default">phone default</string>
@@ -153,7 +153,7 @@
     <string name="chk_headset_ok">✅ Bluetooth headset connected</string>
     <string name="chk_headset_missing">⚠️ Connect your Bluetooth headset</string>
     <string name="chk_other_ok">✅ Your other phone is connected</string>
-    <string name="chk_other_missing">⚠️ Waiting for your other phone: start RideTalk there, pick “%1$s”, same name</string>
+    <string name="chk_other_missing">⚠️ Waiting for your other phone: start Kaskat Media there, pick “%1$s”, same name</string>
     <string name="chk_one_ear_right">💡 Wear only the RIGHT earbud of this phone\'s headset</string>
     <string name="chk_one_ear_left">💡 Wear only the LEFT earbud of this phone\'s headset</string>
     <string name="talk_role_listen">🎵 This phone plays only music. Talking happens on your talk phone.</string>
@@ -195,12 +195,10 @@
     <string name="echo_guard_note">While you talk, incoming voices are turned down, so your voice picked up by a pillion’s or a nearby rider’s phone doesn’t come back to you.</string>
     <string name="sec_controls">🐾 Hands-free controls</string>
     <string name="controls_intro">Control everything without taking the phone out. Pick a ready layout, or tap any row to choose what it does.</string>
-    <string name="preset_standard">Standard</string>
-    <string name="preset_headset_only">Headset only</string>
     <string name="preset_music_first">Music first</string>
     <string name="controls_headset">🎧 Headset button</string>
     <string name="controls_volume">📱 Phone volume keys (work with the screen off)</string>
-    <string name="controls_volume_note">Combinations are pressed quickly one after another; afterwards the volume is put back where it was. A single press still just changes the volume. Works while RideTalk is on. If the volume is at the very top, “up” can’t be felt — keep it one step below.</string>
+    <string name="controls_volume_note">Combinations are pressed quickly one after another; afterwards the volume is put back where it was. A single press still just changes the volume. Works while Kaskat Media is on. If the volume is at the very top, “up” can’t be felt — keep it one step below.</string>
     <string name="controls_pick">What should this do?</string>
     <string name="trig_HEADSET_1">1 tap</string>
     <string name="trig_HEADSET_2">2 taps</string>
@@ -224,4 +222,56 @@
     <string name="act_PREV_TRACK">Previous song</string>
     <string name="act_MUSIC_UP">Music louder</string>
     <string name="act_MUSIC_DOWN">Music quieter</string>
+    <string name="say_mode_music">Music mode</string>
+    <string name="say_mode_call">Talk mode, mic on</string>
+    <string name="say_mic_on">Mic on</string>
+    <string name="say_mic_off">Mic off</string>
+    <string name="say_intercom_back">Intercom back on</string>
+    <string name="say_joined">%s joined</string>
+    <string name="say_joined_anon">Rider connected</string>
+    <string name="say_left">%s left</string>
+    <string name="say_left_anon">Rider disconnected</string>
+    <string name="say_back">%s is back</string>
+    <string name="say_back_anon">Link is back</string>
+    <string name="say_on_call">%s is on a phone call</string>
+    <string name="say_on_call_anon">Rider on a phone call</string>
+    <string name="say_call_over">%s is back from the call</string>
+    <string name="say_call_over_anon">Call ended, rider is back</string>
+    <string name="sec_you">🐾 You</string>
+    <string name="theme_pink">🩷 Pink</string>
+    <string name="theme_blue">💙 Blue</string>
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_en">English</string>
+    <string name="mode_hifi_short">🎵\nMusic</string>
+    <string name="mode_call_short">🎙\nTalk always</string>
+    <string name="tiles_hint">Tap to switch on or off · hold for what it does</string>
+    <string name="advanced_show">⚙ Advanced settings ▾</string>
+    <string name="advanced_hide">⚙ Hide advanced ▴</string>
+    <string name="sec_mic">🎙 Microphone</string>
+    <string name="preset_simple">Simple</string>
+    <string name="preset_full">Full</string>
+    <string name="tile_voice">Voice prompts</string>
+    <string name="tile_cues">Sounds</string>
+    <string name="tile_rx">Clean voices</string>
+    <string name="tile_echo">No echo</string>
+    <string name="tile_duck">Music dips</string>
+    <string name="tile_battery">Battery saver</string>
+    <string name="tile_feedback">Speaker guard</string>
+    <string name="tile_screen">Screen on</string>
+    <string name="voice_prompts_note">A voice says “Music mode”, “Sara joined”, “Mic off” instead of beeps. Uses the phone’s own text-to-speech; if it has no voice for the app language it speaks English, and with no voice at all it beeps.</string>
+    <string name="cues_note">Sounds or voice prompts when riders join or leave, on mode changes and for mute.</string>
+    <string name="duck_note">Music gets quieter while someone talks.</string>
+    <string name="screen_note">Keeps the screen on while the driving screen is open.</string>
+    <string name="welcome_sub">Intercom and shared music for riders, over a hotspot</string>
+    <string name="welcome_style">Choose your style</string>
+    <string name="welcome_pink">🩷\nPink</string>
+    <string name="welcome_blue">💙\nBlue</string>
+    <string name="welcome_lang">Language · زبان</string>
+    <string name="welcome_start">Let’s ride 🏍</string>
+    <string name="notif_on_call">📞 On a call — intercom paused, back after the call</string>
+    <string name="status_on_call">📞 On a call</string>
+    <string name="peer_on_call">📞 on a call</string>
+    <string name="on_call_banner">📞 You’re on a phone call. The intercom is paused so the call stays private, and comes back by itself when you hang up.</string>
+    <string name="music_rate">Sending at %d kbit/s</string>
+    <string name="music_rate_low">Sending at %d kbit/s (weak link, lowered automatically)</string>
 </resources>

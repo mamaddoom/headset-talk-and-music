@@ -69,9 +69,23 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
         } else {
             stopLegacySco()
         }
-        am.mode = AudioManager.MODE_NORMAL
+        // Undo only the call mode we set ourselves, and never under a phone call.
+        if (useSco && !telephonyCall()) am.mode = AudioManager.MODE_NORMAL
         outputDevice = null
         inputDevice = null
+    }
+
+    /**
+     * A phone call is ringing or running: a cellular call, or (while we are not
+     * holding a call link ourselves) a call in another app such as WhatsApp.
+     */
+    fun phoneCallActive(): Boolean =
+        telephonyCall() || (am.mode == AudioManager.MODE_IN_COMMUNICATION && !(active && useSco))
+
+    private fun telephonyCall(): Boolean = when (am.mode) {
+        AudioManager.MODE_RINGTONE, AudioManager.MODE_IN_CALL,
+        MODE_CALL_SCREENING, MODE_CALL_REDIRECT, MODE_COMMUNICATION_REDIRECT -> true
+        else -> false
     }
 
     private fun scheduleReroute() {
@@ -86,7 +100,7 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
 
     private fun apply() {
         if (!useSco) {
-            am.mode = AudioManager.MODE_NORMAL
+            if (!phoneCallActive()) am.mode = AudioManager.MODE_NORMAL
             val out = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             val a2dp = out.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
                 ?: out.firstOrNull { it.type == TYPE_BLE_HEADSET || it.type == TYPE_BLE_SPEAKER }
@@ -221,6 +235,9 @@ class AudioRouter(private val context: Context, private val onRouteChanged: () -
         // Constant values so we can compile the list on any API level.
         const val TYPE_BLE_HEADSET = 26
         const val TYPE_BLE_SPEAKER = 27
+        const val MODE_CALL_SCREENING = 4
+        const val MODE_CALL_REDIRECT = 5
+        const val MODE_COMMUNICATION_REDIRECT = 6
         val PRIORITY = listOf(
             TYPE_BLE_HEADSET,
             AudioDeviceInfo.TYPE_BLUETOOTH_SCO,

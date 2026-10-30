@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Soft pink and hot pink with near-black ink, like the helmet. Light, so it reads in sunlight. -->
-    <color name="bg">#FFF0F6</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="surface2">#FFE3EF</color>
-    <color name="stroke">#F7C4DA</color>
-    <color name="text">#2A0F1E</color>
-    <color name="text_dim">#8E5C77</color>
-    <color name="accent">#FF3E8D</color>
-    <color name="accent_mid">#FF8CBA</color>
-    <color name="accent_dark">#FFD2E5</color>
+    <!-- Pink theme: soft pink and hot pink with near-black ink, like the helmet. -->
+    <color name="pink_bg">#FFF0F6</color>
+    <color name="pink_surface">#FFFFFF</color>
+    <color name="pink_surface2">#FFE3EF</color>
+    <color name="pink_stroke">#F7C4DA</color>
+    <color name="pink_text">#2A0F1E</color>
+    <color name="pink_text_dim">#8E5C77</color>
+    <color name="pink_accent">#FF3E8D</color>
+    <color name="pink_accent_mid">#FF8CBA</color>
+    <color name="pink_accent_dark">#FFD2E5</color>
+    <color name="pink_ripple">#33FF3E8D</color>
+
+    <!-- Blue theme: sky and royal blue with deep navy ink. -->
+    <color name="blue_bg">#EEF5FF</color>
+    <color name="blue_surface">#FFFFFF</color>
+    <color name="blue_surface2">#E0ECFC</color>
+    <color name="blue_stroke">#C0D5F2</color>
+    <color name="blue_text">#0E1A2C</color>
+    <color name="blue_text_dim">#5A6B86</color>
+    <color name="blue_accent">#1F7AFF</color>
+    <color name="blue_accent_mid">#7DB0FF</color>
+    <color name="blue_accent_dark">#D2E4FF</color>
+    <color name="blue_ripple">#331F7AFF</color>
+
+    <!-- Same in both themes. -->
     <color name="ok">#1E9E55</color>
     <color name="danger">#E5323B</color>
     <color name="danger_dark">#FFD9DB</color>
-    <color name="ripple">#33FF3E8D</color>
-    <!-- kept for older drawables -->
-    <color name="card">#FFFFFF</color>
-    <color name="card_stroke">#F7C4DA</color>
-    <color name="button">#FFE3EF</color>
-    <color name="button_pressed">#FFD2E5</color>
 </resources>

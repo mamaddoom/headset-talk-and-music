@@ -7,14 +7,15 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import com.mamaddoom.ridetalk.R
+import com.mamaddoom.ridetalk.colorOf
 
 /** Rounded level meter that eases towards its value (no jumpy progress bar). */
 class LevelBarView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
-    private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.surface2) }
-    private val fg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.ok) }
+    private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.colorOf(R.attr.cSurface2) }
+    private val fg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.colorOf(R.color.ok) }
     private val rect = RectF()
     private var target = 0f
     private var shown = 0f
@@ -22,7 +23,7 @@ class LevelBarView @JvmOverloads constructor(
     /** 0..1 */
     fun setLevel(v: Float, hot: Boolean = false) {
         target = v.coerceIn(0f, 1f)
-        fg.color = context.getColor(if (hot) R.color.accent else R.color.ok)
+        fg.color = context.colorOf(if (hot) R.attr.cAccent else R.color.ok)
         invalidate()
     }
 

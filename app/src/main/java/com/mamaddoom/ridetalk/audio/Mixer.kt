@@ -95,6 +95,16 @@ class Mixer(
         pendingCue = cue
     }
 
+    @Volatile private var pendingSpeech: FloatArray? = null
+
+    /**
+     * Plays a spoken announcement ([samples] mono at [rate]) over everything,
+     * with the music ducked under it. A newer one replaces one still playing.
+     */
+    fun say(samples: FloatArray, rate: Int) {
+        pendingSpeech = Pcm.resample(samples, rate, outRate)
+    }
+
     /** Set while any remote rider is audible; used by anti-feedback on the mic side. */
     @Volatile var remoteTalking = false
         private set
@@ -174,13 +184,20 @@ class Mixer(
         var beepLeft = 0
         var beepPhase = 0.0
         var beep = Cue.READY
+        var speech: FloatArray? = null
+        var speechPos = 0
 
         try {
             track.play()
             while (running) {
                 mix.fill(0f)
                 val now = System.currentTimeMillis()
-                var anyTalking = localTalking || now - voiceElsewhereAtMs < 400
+                pendingSpeech?.let {
+                    pendingSpeech = null
+                    speech = it
+                    speechPos = 0
+                }
+                var anyTalking = localTalking || now - voiceElsewhereAtMs < 400 || speech != null
                 var remote = false
 
                 // --- voice from every peer ---
@@ -281,6 +298,16 @@ class Mixer(
                     }
                 }
 
+                speech?.let { sp ->
+                    var fr = 0
+                    while (fr < periodFrames && speechPos < sp.size) {
+                        val v = sp[speechPos++] * SPEECH_LEVEL
+                        for (c in 0 until channels) mix[fr * channels + c] += v
+                        fr++
+                    }
+                    if (speechPos >= sp.size) speech = null
+                }
+
                 if (mono && channels == 2) {
                     for (i in 0 until periodFrames) {
                         val m = (mix[i * 2] + mix[i * 2 + 1]) * 0.5f
@@ -344,5 +371,6 @@ class Mixer(
         const val ECHO_LEVEL = 0.16f
         /** Extra hold after our last word, on top of the peer's jitter delay. */
         const val ECHO_HOLD_MS = 250L
+        const val SPEECH_LEVEL = 0.9f
     }
 }

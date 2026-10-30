@@ -11,6 +11,7 @@ import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import com.mamaddoom.ridetalk.R
+import com.mamaddoom.ridetalk.colorOf
 import kotlin.math.min
 
 /**
@@ -35,7 +36,7 @@ class TalkButtonView @JvmOverloads constructor(
     private val arc = RectF()
 
     private var mode = Mode.OFF
-    private var colour = context.getColor(R.color.surface2)
+    private var colour = context.colorOf(R.attr.cSurface2)
     private var colourAnim: ValueAnimator? = null
     private var pulse = 0f
     private val pulseAnim = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -54,21 +55,21 @@ class TalkButtonView @JvmOverloads constructor(
 
     init {
         track.strokeWidth = 6 * density
-        track.color = context.getColor(R.color.stroke)
+        track.color = context.colorOf(R.attr.cStroke)
         level.strokeWidth = 6 * density
-        level.color = context.getColor(R.color.ok)
+        level.color = context.colorOf(R.color.ok)
         ring.strokeWidth = 2 * density
     }
 
     fun setMode(m: Mode) {
         if (m == mode) return
         mode = m
-        val to = context.getColor(
+        val to = context.colorOf(
             when (m) {
-                Mode.OFF -> R.color.surface2
-                Mode.IDLE -> R.color.accent_dark
-                Mode.PREPARING -> R.color.accent_mid
-                Mode.LIVE -> R.color.accent
+                Mode.OFF -> R.attr.cSurface2
+                Mode.IDLE -> R.attr.cAccentDark
+                Mode.PREPARING -> R.attr.cAccentMid
+                Mode.LIVE -> R.attr.cAccent
                 Mode.MUTED -> R.color.danger_dark
             },
         )
@@ -112,7 +113,7 @@ class TalkButtonView @JvmOverloads constructor(
         if (pulse > 0f || mode == Mode.LIVE || mode == Mode.PREPARING) {
             for (k in 0..1) {
                 val p = (pulse + k * 0.5f) % 1f
-                ring.color = context.getColor(R.color.accent)
+                ring.color = context.colorOf(R.attr.cAccent)
                 ring.alpha = ((1f - p) * (if (mode == Mode.LIVE) 160 else 90)).toInt()
                 canvas.drawCircle(cx, cy, r + (maxR - r) * p, ring)
             }

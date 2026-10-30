@@ -61,6 +61,11 @@ object Protocol {
     /** Two-phone setup roles: the rider's intercom phone / music-only phone. */
     const val FLAG_TALK_PHONE = 4
     const val FLAG_MUSIC_PHONE = 8
+    /** This rider is on a phone call: intercom paused, back when the call ends. */
+    const val FLAG_ON_CALL = 16
+
+    /** Beacon music-loss byte: not receiving music. */
+    const val LOSS_UNKNOWN = 255
 
     const val MAX_PACKET = 1500
     /** Largest datagram we build: 1472 bytes of UDP payload minus room for the group-code tag. */
@@ -70,7 +75,12 @@ object Protocol {
 
     class Header(val type: Byte, val sender: Int, val seq: Int)
 
-    class Beacon(val flags: Int, val name: String, val title: String)
+    /**
+     * [musicLoss]: percent of shared-music frames this rider lost lately, or
+     * [LOSS_UNKNOWN]. Lets the music sender lower its bitrate on a weak link.
+     * Sent as a trailing byte, which older builds simply ignore.
+     */
+    class Beacon(val flags: Int, val name: String, val title: String, val musicLoss: Int = LOSS_UNKNOWN)
 
     fun writeHeader(buf: ByteBuffer, type: Byte, sender: Int, seq: Int) {
         buf.clear()
@@ -95,6 +105,7 @@ object Protocol {
         buf.put(b.flags.toByte())
         putString(buf, b.name, MAX_NAME)
         putString(buf, b.title, MAX_TITLE)
+        buf.put(b.musicLoss.coerceIn(0, 255).toByte())
         return buf.position()
     }
 
@@ -103,7 +114,8 @@ object Protocol {
         val flags = buf.get().toInt() and 0xff
         val name = getString(buf) ?: return null
         val title = getString(buf) ?: return null
-        return Beacon(flags, name, title)
+        val loss = if (buf.hasRemaining()) buf.get().toInt() and 0xff else LOSS_UNKNOWN
+        return Beacon(flags, name, title, loss)
     }
 
     fun encodeBytes(buf: ByteBuffer, type: Byte, sender: Int, seq: Int, data: ByteArray, len: Int): Int {

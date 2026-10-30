@@ -8,6 +8,51 @@ import android.os.Build
 class Settings(context: Context) {
     private val p = context.getSharedPreferences("ridetalk", Context.MODE_PRIVATE)
 
+    init {
+        migrate()
+    }
+
+    /**
+     * Updating over an older build kept preferences whose meaning has since
+     * changed (old "preset" numbers, the old call-mode default, ...), so an
+     * update behaved differently from a fresh install. When the stored schema
+     * is older than [SCHEMA], everything except the rider's own data (name,
+     * group code, playlist, look and language) goes back to today's defaults.
+     */
+    private fun migrate() {
+        if (p.getInt("schema", 0) >= SCHEMA) return
+        val keep = setOf("name", "group", "playlist", "trackIndex", "shuffle", "theme", "lang", "onboarded")
+        val e = p.edit()
+        for (k in p.all.keys) if (k !in keep) e.remove(k)
+        e.putInt("schema", SCHEMA)
+        e.commit()
+    }
+
+    // ------------------------------------------------------------- look & language
+
+    /** First-launch choices made (theme and language). */
+    var onboarded: Boolean
+        get() = p.getBoolean("onboarded", false)
+        set(v) = p.edit().putBoolean("onboarded", v).apply()
+
+    /** true = blue theme, false = pink. */
+    var blueTheme: Boolean
+        get() = p.getString("theme", "pink") == "blue"
+        set(v) = p.edit().putString("theme", if (v) "blue" else "pink").apply()
+
+    /** "fa" or "en"; empty = follow the phone. */
+    var language: String
+        get() = p.getString("lang", "").orEmpty()
+        // Written at once: the activity restarts right after to apply it.
+        set(v) {
+            p.edit().putString("lang", v).commit()
+        }
+
+    /** Spoken announcements ("music mode", "Sara joined") instead of beeps, when the phone can speak. */
+    var voicePrompts: Boolean
+        get() = p.getBoolean("voicePrompts", true)
+        set(v) = p.edit().putBoolean("voicePrompts", v).apply()
+
     var name: String
         get() = p.getString("name", null)?.takeIf { it.isNotBlank() } ?: Build.MODEL
         set(v) = p.edit().putString("name", v.trim().take(24)).apply()
@@ -160,4 +205,8 @@ class Settings(context: Context) {
     val monoOutput: Boolean
         get() = role == Role.MUSIC
 
+    companion object {
+        /** Bump when a stored preference changes meaning; older stores are reset on update. */
+        const val SCHEMA = 3
+    }
 }

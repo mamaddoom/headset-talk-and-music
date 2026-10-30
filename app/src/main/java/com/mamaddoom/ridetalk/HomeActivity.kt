@@ -39,7 +39,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.SeekBar
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.mamaddoom.ridetalk.net.Transport
@@ -50,7 +49,7 @@ import com.mamaddoom.ridetalk.ui.TalkButtonView
  * Three tabs: Intercom (big talk button, riders, link), Music (player,
  * playlist, app audio) and Settings (trip setup, sound, group, battery).
  */
-class MainActivity : Activity() {
+class HomeActivity : Activity() {
 
     private var service: IntercomService? = null
     private val engine get() = service?.engine
@@ -174,10 +173,15 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Look.wrap(base))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        settings = Settings(this)
+        setTheme(Look.theme(settings))
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        settings = Settings(this)
         bindViews()
         applyInsets()
         wireControls()
@@ -314,7 +318,7 @@ class MainActivity : Activity() {
         val old = tab
         tab = index.coerceIn(0, pages.size - 1)
         for ((i, label) in navLabels.withIndex()) {
-            label.setTextColor(getColor(if (i == tab) R.color.accent else R.color.text_dim))
+            label.setTextColor(colorOf(if (i == tab) R.attr.cAccent else R.attr.cTextDim))
         }
         moveIndicator(animate)
         if (!animate || old == tab) {
@@ -451,31 +455,14 @@ class MainActivity : Activity() {
         renderSyncLabel()
         updateVolumeStream()
 
-        switch(R.id.swDuck, settings.ducking) {
-            settings.ducking = it
-            engine?.applySettings()
-        }
-        switch(R.id.swBatterySaver, settings.batterySaver) {
-            val e = engine
-            if (e != null) e.setBatterySaver(it) else settings.batterySaver = it
-        }
-        switch(R.id.swCues, settings.cues) { settings.cues = it }
-        switch(R.id.swRxDenoise, settings.rxDenoise) {
-            settings.rxDenoise = it
-            engine?.applySettings()
-        }
-        switch(R.id.swEchoGuard, settings.echoGuard) {
-            settings.echoGuard = it
-            engine?.applySettings()
-        }
+        setupTiles()
         setupControls()
-        switch(R.id.swAntiFeedback, settings.antiFeedback) {
-            settings.antiFeedback = it
-            engine?.applySettings()
-        }
-        switch(R.id.swDriveScreen, settings.driveKeepScreenOn) {
-            settings.driveKeepScreenOn = it
-            if (driveOverlay.visibility == View.VISIBLE) showDriveScreen(true)
+        setupLook()
+        findViewById<Button>(R.id.btnAdvanced).setOnClickListener { v ->
+            val panel = findViewById<View>(R.id.advancedPanel)
+            val show = panel.visibility != View.VISIBLE
+            panel.visibility = if (show) View.VISIBLE else View.GONE
+            (v as Button).setText(if (show) R.string.advanced_hide else R.string.advanced_show)
         }
         findViewById<EditText>(R.id.editGroup).apply {
             setText(settings.groupCode)
@@ -605,14 +592,171 @@ class MainActivity : Activity() {
         return true
     }
 
+    // ---------------------------------------------------------------- on/off tiles
+
+    /** One big icon tile per on/off setting; tap toggles, long-press explains. */
+    private class Tile(
+        val icon: String,
+        val label: Int,
+        val note: Int,
+        val get: () -> Boolean,
+        val set: (Boolean) -> Unit,
+    )
+
+    private lateinit var tiles: List<Pair<Tile, View>>
+
+    private fun setupTiles() {
+        val defs = listOf(
+            Tile("🗣", R.string.tile_voice, R.string.voice_prompts_note, { settings.voicePrompts }) {
+                settings.voicePrompts = it
+            },
+            Tile("🔔", R.string.tile_cues, R.string.cues_note, { settings.cues }) { settings.cues = it },
+            Tile("🎧", R.string.tile_rx, R.string.rx_denoise_note, { settings.rxDenoise }) {
+                settings.rxDenoise = it
+                engine?.applySettings()
+            },
+            Tile("🙊", R.string.tile_echo, R.string.echo_guard_note, { settings.echoGuard }) {
+                settings.echoGuard = it
+                engine?.applySettings()
+            },
+            Tile("🎶", R.string.tile_duck, R.string.duck_note, { settings.ducking }) {
+                settings.ducking = it
+                engine?.applySettings()
+            },
+            Tile("🔋", R.string.tile_battery, R.string.battery_saver_note, { settings.batterySaver }) {
+                val e = engine
+                if (e != null) e.setBatterySaver(it) else settings.batterySaver = it
+            },
+            Tile("📢", R.string.tile_feedback, R.string.anti_feedback_note, { settings.antiFeedback }) {
+                settings.antiFeedback = it
+                engine?.applySettings()
+            },
+            Tile("☀️", R.string.tile_screen, R.string.screen_note, { settings.driveKeepScreenOn }) {
+                settings.driveKeepScreenOn = it
+                if (driveOverlay.visibility == View.VISIBLE) showDriveScreen(true)
+            },
+        )
+        val grid = findViewById<LinearLayout>(R.id.tileGrid)
+        grid.removeAllViews()
+        val built = ArrayList<Pair<Tile, View>>()
+        for (rowDefs in defs.chunked(TILE_COLUMNS)) {
+            val row = LinearLayout(this)
+            grid.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(96)))
+            for (t in rowDefs) {
+                val v = tileView(t)
+                row.addView(v, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                    setMargins(dp(4), dp(4), dp(4), dp(4))
+                })
+                built += t to v
+            }
+            // Keep the last row's tiles the same width as the others.
+            repeat(TILE_COLUMNS - rowDefs.size) {
+                row.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f).apply { setMargins(dp(4), 0, dp(4), 0) })
+            }
+        }
+        tiles = built
+        renderTiles()
+    }
+
+    private fun tileView(t: Tile): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        setBackgroundResource(R.drawable.tile)
+        setPadding(dp(4), dp(6), dp(4), dp(6))
+        isClickable = true
+        isFocusable = true
+        addView(TextView(context).apply {
+            text = t.icon
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+            gravity = Gravity.CENTER
+        })
+        addView(TextView(context).apply {
+            setText(t.label)
+            setTextColor(colorOf(R.attr.cText))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            gravity = Gravity.CENTER
+            maxLines = 2
+            setPadding(0, dp(4), 0, 0)
+        })
+        setOnClickListener { v ->
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            t.set(!t.get())
+            pop(v)
+            renderTiles()
+        }
+        setOnLongClickListener {
+            Toast.makeText(context, t.note, Toast.LENGTH_LONG).show()
+            true
+        }
+    }
+
+    private fun renderTiles() {
+        if (!::tiles.isInitialized) return
+        for ((t, v) in tiles) {
+            val on = t.get()
+            v.isActivated = on
+            v.alpha = if (on) 1f else 0.55f
+        }
+    }
+
+    // ---------------------------------------------------------------- look & language
+
+    private fun setupLook() {
+        val pink = findViewById<Button>(R.id.btnThemePink)
+        val blue = findViewById<Button>(R.id.btnThemeBlue)
+        val fa = findViewById<Button>(R.id.btnLangFa)
+        val en = findViewById<Button>(R.id.btnLangEn)
+        val wPink = findViewById<Button>(R.id.welcomePink)
+        val wBlue = findViewById<Button>(R.id.welcomeBlue)
+        val wFa = findViewById<Button>(R.id.welcomeFa)
+        val wEn = findViewById<Button>(R.id.welcomeEn)
+        val isFa = currentLanguage() == "fa"
+        for (b in listOf(pink, wPink)) b.isSelected = !settings.blueTheme
+        for (b in listOf(blue, wBlue)) b.isSelected = settings.blueTheme
+        for (b in listOf(fa, wFa)) b.isSelected = isFa
+        for (b in listOf(en, wEn)) b.isSelected = !isFa
+        for (b in listOf(pink, wPink)) b.setOnClickListener { chooseTheme(blue = false) }
+        for (b in listOf(blue, wBlue)) b.setOnClickListener { chooseTheme(blue = true) }
+        for (b in listOf(fa, wFa)) b.setOnClickListener { chooseLanguage("fa") }
+        for (b in listOf(en, wEn)) b.setOnClickListener { chooseLanguage("en") }
+        val welcome = findViewById<View>(R.id.welcomeOverlay)
+        welcome.visibility = if (settings.onboarded) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.welcomeStart).setOnClickListener {
+            pop(it)
+            settings.onboarded = true
+            if (settings.language.isEmpty()) settings.language = currentLanguage()
+            Look.applyLauncherIcon(this, settings.blueTheme)
+            welcome.animate().alpha(0f).setDuration(250).withEndAction { welcome.visibility = View.GONE }.start()
+        }
+    }
+
+    /** The language the app shows now: the chosen one, else the phone's (Persian or English). */
+    private fun currentLanguage(): String =
+        settings.language.ifEmpty { if (resources.configuration.locales[0].language == "fa") "fa" else "en" }
+
+    private fun chooseTheme(blue: Boolean) {
+        if (settings.blueTheme == blue) return
+        settings.blueTheme = blue
+        // On the welcome screen the icon is set once, on "start".
+        if (settings.onboarded) Look.applyLauncherIcon(this, blue)
+        recreate()
+    }
+
+    private fun chooseLanguage(lang: String) {
+        if (currentLanguage() == lang && settings.language.isNotEmpty()) return
+        settings.language = lang
+        engine?.reloadVoice()
+        recreate()
+    }
+
     // ---------------------------------------------------------------- hands-free controls
 
     private lateinit var presetButtons: Map<Controls.Preset, Button>
 
     private fun setupControls() {
         presetButtons = mapOf(
-            Controls.Preset.STANDARD to findViewById(R.id.btnPresetStandard),
-            Controls.Preset.HEADSET_ONLY to findViewById(R.id.btnPresetHeadset),
+            Controls.Preset.SIMPLE to findViewById(R.id.btnPresetSimple),
+            Controls.Preset.FULL to findViewById(R.id.btnPresetFull),
             Controls.Preset.MUSIC_FIRST to findViewById(R.id.btnPresetMusic),
         )
         for ((preset, button) in presetButtons) {
@@ -647,13 +791,13 @@ class MainActivity : Activity() {
             ).apply { topMargin = dp(6) }
             addView(TextView(context).apply {
                 text = getString(triggerLabel(t))
-                setTextColor(getColor(R.color.text))
+                setTextColor(colorOf(R.attr.cText))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
             addView(TextView(context).apply {
                 text = "${getString(actionLabel(action))}  ▾"
-                setTextColor(getColor(if (action == Controls.Action.NONE) R.color.text_dim else R.color.accent))
+                setTextColor(colorOf(if (action == Controls.Action.NONE) R.attr.cTextDim else R.attr.cAccent))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
                 gravity = Gravity.END
@@ -716,13 +860,6 @@ class MainActivity : Activity() {
         override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         override fun afterTextChanged(s: Editable?) = block(s?.toString().orEmpty())
-    }
-
-    private fun switch(id: Int, initial: Boolean, onChange: (Boolean) -> Unit) {
-        findViewById<Switch>(id).apply {
-            isChecked = initial
-            setOnCheckedChangeListener { _, c -> onChange(c) }
-        }
     }
 
     private fun slider(id: Int, initial: Int, onChange: (Int) -> Unit) {
@@ -973,13 +1110,14 @@ class MainActivity : Activity() {
 
     private fun renderHeader(st: Engine.State?) {
         val (text, colour) = when {
-            st == null -> getString(R.string.status_off) to R.color.text_dim
-            st.peers.isEmpty() && st.standby -> getString(R.string.status_standby) to R.color.accent
-            st.peers.isEmpty() -> getString(R.string.status_searching) to R.color.accent
+            st == null -> getString(R.string.status_off) to R.attr.cTextDim
+            st.onCall -> getString(R.string.status_on_call) to R.attr.cAccent
+            st.peers.isEmpty() && st.standby -> getString(R.string.status_standby) to R.attr.cAccent
+            st.peers.isEmpty() -> getString(R.string.status_searching) to R.attr.cAccent
             else -> getString(R.string.status_connected, st.peers.size) to R.color.ok
         }
         if (status.text != text) status.text = text
-        statusDot.backgroundTintList = ColorStateList.valueOf(getColor(colour))
+        statusDot.backgroundTintList = ColorStateList.valueOf(colorOf(colour))
         // The dot breathes while we are looking for riders.
         val searching = st != null && st.peers.isEmpty()
         if (searching && statusPulse == null) {
@@ -1056,12 +1194,18 @@ class MainActivity : Activity() {
         talkLabel.setText(label)
         if (talkIcon.text != icon) talkIcon.text = icon
         micError.visibility = if (st != null && !st.micOk && role != Settings.Role.MUSIC) View.VISIBLE else View.GONE
+        if (st?.onCall == true) {
+            talkRoleNote.setText(R.string.on_call_banner)
+            talkRoleNote.visibility = View.VISIBLE
+            talkButton.setMode(TalkButtonView.Mode.OFF)
+            talkLabel.setText(R.string.status_on_call)
+        }
 
         renderPeers(st)
 
         if (st == null || st.standby) {
             linkQuality.text = getString(if (st == null) R.string.status_off else R.string.status_standby)
-            linkQuality.setTextColor(getColor(R.color.text_dim))
+            linkQuality.setTextColor(colorOf(R.attr.cTextDim))
             route.text = ""
         } else {
             linkQuality.setText(
@@ -1071,7 +1215,7 @@ class MainActivity : Activity() {
                     else -> R.string.link_narrow
                 },
             )
-            linkQuality.setTextColor(getColor(if (st.linkHighQuality) R.color.ok else R.color.accent))
+            linkQuality.setTextColor(colorOf(if (st.linkHighQuality) R.color.ok else R.attr.cAccent))
             route.text = getString(R.string.route, st.route)
         }
         val ips = st?.myIps ?: Transport.localAddresses()
@@ -1093,7 +1237,7 @@ class MainActivity : Activity() {
             val band = getString(if (mhz in 1..3000) R.string.wifi_24 else R.string.wifi_5)
             wifiInfo.text = getString(R.string.wifi_line, getString(quality), rssi, band) +
                 if (mhz > 3000) "\n" + getString(R.string.wifi_5_tip) else ""
-            wifiInfo.setTextColor(getColor(if (rssi >= -72) R.color.text_dim else R.color.accent))
+            wifiInfo.setTextColor(colorOf(if (rssi >= -72) R.attr.cTextDim else R.attr.cAccent))
             wifiInfo.visibility = View.VISIBLE
         }
     }
@@ -1102,7 +1246,7 @@ class MainActivity : Activity() {
     private fun renderPeers(st: Engine.State?) {
         val list = st?.peers.orEmpty()
         noPeers.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
-        val key = list.joinToString("|") { "${it.name}/${it.talkPhone}/${it.musicPhone}/${it.mine}" }
+        val key = list.joinToString("|") { "${it.name}/${it.talkPhone}/${it.musicPhone}/${it.mine}/${it.onCall}" }
         if (key != peerListKey) {
             peerListKey = key
             peerList.removeAllViews()
@@ -1117,6 +1261,7 @@ class MainActivity : Activity() {
                     }
                 }
                 val icon = when {
+                    p.onCall -> "📞"
                     p.talkPhone -> "🎙"
                     p.musicPhone -> "🎵"
                     else -> "🏍"
@@ -1127,7 +1272,7 @@ class MainActivity : Activity() {
                 })
                 chip.addView(TextView(this).apply {
                     text = if (p.mine) "${p.name}  ${getString(R.string.peer_mine)}" else p.name
-                    setTextColor(getColor(R.color.text))
+                    setTextColor(colorOf(R.attr.cText))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                     maxLines = 1
                     ellipsize = TextUtils.TruncateAt.END
@@ -1136,7 +1281,7 @@ class MainActivity : Activity() {
                 })
                 chip.addView(TextView(this).apply {
                     tag = "detail"
-                    setTextColor(getColor(R.color.text_dim))
+                    setTextColor(colorOf(R.attr.cTextDim))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 })
                 peerList.addView(chip)
@@ -1148,15 +1293,16 @@ class MainActivity : Activity() {
             chip.alpha = if (p.weak) 0.6f else 1f
             val detail = chip.findViewWithTag<TextView>("detail")
             val text = when {
+                p.onCall -> getString(R.string.peer_on_call)
                 p.weak -> getString(R.string.peer_weak)
                 p.talking -> getString(R.string.peer_talking)
                 else -> "${p.quality}%"
             }
             if (detail.text != text) detail.text = text
-            detail.setTextColor(getColor(when {
-                p.weak -> R.color.accent
+            detail.setTextColor(colorOf(when {
+                p.weak || p.onCall -> R.attr.cAccent
                 p.talking -> R.color.ok
-                else -> R.color.text_dim
+                else -> R.attr.cTextDim
             }))
         }
     }
@@ -1193,6 +1339,10 @@ class MainActivity : Activity() {
         musicInfo.text = when {
             st?.musicError == true -> getString(R.string.music_error)
             st != null && st.musicPlaying && !st.musicIsLocal -> getString(R.string.music_from, st.musicFrom)
+            st != null && st.musicKbps > 0 -> getString(
+                if (st.musicKbps < 128) R.string.music_rate_low else R.string.music_rate,
+                st.musicKbps,
+            )
             else -> getString(R.string.playlist_count, tracks.size)
         }
 
@@ -1219,7 +1369,7 @@ class MainActivity : Activity() {
             st.appAudioSignal -> getString(R.string.app_audio_live)
             else -> getString(R.string.app_audio_waiting)
         }
-        appAudioStatus.setTextColor(getColor(if (st?.appAudioSignal == true) R.color.ok else R.color.text_dim))
+        appAudioStatus.setTextColor(colorOf(if (st?.appAudioSignal == true) R.color.ok else R.attr.cTextDim))
     }
 
     /** Rebuilds the song rows only when the list or the current song changes. */
@@ -1242,7 +1392,7 @@ class MainActivity : Activity() {
             }
             val label = TextView(this).apply {
                 text = (if (current && playing) "▶  " else "${i + 1}.  ") + title
-                setTextColor(getColor(if (current) R.color.accent else R.color.text))
+                setTextColor(colorOf(if (current) R.attr.cAccent else R.attr.cText))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
@@ -1253,7 +1403,7 @@ class MainActivity : Activity() {
             }
             val remove = TextView(this).apply {
                 setText(R.string.remove_track)
-                setTextColor(getColor(R.color.text_dim))
+                setTextColor(colorOf(R.attr.cTextDim))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(rowHeight, LinearLayout.LayoutParams.MATCH_PARENT)
@@ -1323,6 +1473,10 @@ class MainActivity : Activity() {
         btnModeCall.isSelected = settings.headsetMic
         modeNote.setText(if (!settings.headsetMic) R.string.mode_hifi_note else R.string.mode_call_note)
         micSection.visibility = if (role == Settings.Role.MUSIC) View.GONE else View.VISIBLE
+        val noiseVis = micSection.visibility
+        findViewById<View>(R.id.noiseRow).visibility = noiseVis
+        noiseLabel.visibility = noiseVis
+        renderTiles()
         val ptt = st?.ptt ?: settings.ptt
         // Detector sensitivity matters for open mic and for ending a tap-to-talk session.
         voxLabel.visibility = if (ptt && !tapToTalk) View.GONE else View.VISIBLE
@@ -1335,7 +1489,7 @@ class MainActivity : Activity() {
 
     private fun renderDrive(st: Engine.State?) {
         driveStatus.text = status.text
-        driveStatus.setTextColor(getColor(if (st != null && st.peers.isNotEmpty()) R.color.ok else R.color.accent))
+        driveStatus.setTextColor(colorOf(if (st != null && st.peers.isNotEmpty()) R.color.ok else R.attr.cAccent))
         driveMusicTitle.text = if (st?.musicPlaying == true) st.musicTitle else ""
         val tap = tapToTalk
         driveTalk.visibility = if (settings.role == Settings.Role.MUSIC) View.GONE else View.VISIBLE
@@ -1373,5 +1527,6 @@ class MainActivity : Activity() {
         const val REQ_PROJECTION = 3
         const val REQ_MIC_FOR_APP_AUDIO = 4
         const val KEY_TAB = "tab"
+        const val TILE_COLUMNS = 3
     }
 }

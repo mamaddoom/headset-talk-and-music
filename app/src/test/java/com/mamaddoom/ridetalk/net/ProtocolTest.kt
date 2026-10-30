@@ -27,6 +27,30 @@ class ProtocolTest {
     }
 
     @Test
+    fun beaconCarriesLossAndCallFlag() {
+        val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
+        val flags = Protocol.FLAG_ON_CALL or Protocol.FLAG_TALKING
+        val len = Protocol.encodeBeacon(buf, 1, 1, Protocol.Beacon(flags, "Sara", "", musicLoss = 17))
+        val rx = wrap(buf, len)
+        Protocol.readHeader(rx)!!
+        val b = Protocol.decodeBeacon(rx)!!
+        assertEquals(17, b.musicLoss)
+        assertTrue(b.flags and Protocol.FLAG_ON_CALL != 0)
+    }
+
+    @Test
+    fun olderBeaconWithoutLossByteStillDecodes() {
+        val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
+        val len = Protocol.encodeBeacon(buf, 1, 1, Protocol.Beacon(0, "Ali", "x"))
+        // Drop the trailing loss byte, as a 1.0.10 build sends it.
+        val rx = wrap(buf, len - 1)
+        Protocol.readHeader(rx)!!
+        val b = Protocol.decodeBeacon(rx)!!
+        assertEquals("Ali", b.name)
+        assertEquals(Protocol.LOSS_UNKNOWN, b.musicLoss)
+    }
+
+    @Test
     fun redundancyContainerRoundTrips() {
         val buf = ByteBuffer.allocate(Protocol.MAX_PACKET)
         val frames = listOf(ByteArray(61) { 1 }, ByteArray(58) { 2 }, ByteArray(64) { 3 })

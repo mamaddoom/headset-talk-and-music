@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">رایدتاک</string>
+    <string name="app_name">Kaskat Media</string>
     <string name="notif_channel">اینترکام</string>
     <string name="notif_starting">در حال روشن کردن اینترکام…</string>
     <string name="notif_connected">متصل: %1$s</string>
@@ -59,7 +59,7 @@
     <string name="sec_settings">باتری و پایداری</string>
     <string name="name_hint">اسم شما (به نفر دیگر نمایش داده می‌شود)</string>
     <string name="battery_opt">باتری: بدون محدودیت</string>
-    <string name="guide">برای کار مطمئن با صفحهٔ خاموش:\n• باتری: رایدتاک را روی «بدون محدودیت» بگذارید / اجازهٔ فعالیت در پس‌زمینه بدهید.\n• اگر گوشی شما گزینهٔ «اجرای خودکار» یا «برنامه‌های پس‌زمینه» دارد، آن را برای رایدتاک روشن کنید (دکمهٔ تنظیمات برنامه).\n• رایدتاک را در صفحهٔ برنامه‌های اخیر قفل کنید تا سیستم آن را نبندد.\n• در گوشی هات‌اسپات، «خاموش شدن خودکار هات‌اسپات» را غیرفعال کنید.\n• اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای / سوییچ هوشمند شبکه» را خاموش کنید.</string>
+    <string name="guide">برای کار مطمئن با صفحهٔ خاموش:\n• باتری: کاسکت مدیا را روی «بدون محدودیت» بگذارید / اجازهٔ فعالیت در پس‌زمینه بدهید.\n• اگر گوشی شما گزینهٔ «اجرای خودکار» یا «برنامه‌های پس‌زمینه» دارد، آن را برای کاسکت مدیا روشن کنید (دکمهٔ تنظیمات برنامه).\n• کاسکت مدیا را در صفحهٔ برنامه‌های اخیر قفل کنید تا سیستم آن را نبندد.\n• در گوشی هات‌اسپات، «خاموش شدن خودکار هات‌اسپات» را غیرفعال کنید.\n• اگر وای‌فای مدام به دیتای موبایل سوییچ می‌کند، «دستیار وای‌فای / سوییچ هوشمند شبکه» را خاموش کنید.</string>
     <string name="perm_denied">برای صحبت کردن مجوز میکروفن لازم است.</string>
 
     <string name="route_default">پیش‌فرض گوشی</string>
@@ -153,7 +153,7 @@
     <string name="chk_headset_ok">✅ هندزفری بلوتوث وصل است</string>
     <string name="chk_headset_missing">⚠️ هندزفری بلوتوث را وصل کنید</string>
     <string name="chk_other_ok">✅ گوشی دیگرتان وصل است</string>
-    <string name="chk_other_missing">⚠️ منتظر گوشی دیگرتان: رایدتاک را آنجا روشن کنید، «%1$s» را انتخاب کنید، با همین اسم</string>
+    <string name="chk_other_missing">⚠️ منتظر گوشی دیگرتان: کاسکت مدیا را آنجا روشن کنید، «%1$s» را انتخاب کنید، با همین اسم</string>
     <string name="chk_one_ear_right">💡 از هندزفری این گوشی فقط گوش راست را بگذارید</string>
     <string name="chk_one_ear_left">💡 از هندزفری این گوشی فقط گوش چپ را بگذارید</string>
     <string name="talk_role_listen">🎵 این گوشی فقط موزیک پخش می‌کند. مکالمه روی گوشی مکالمهٔ شماست.</string>
@@ -195,12 +195,10 @@
     <string name="echo_guard_note">وقتی حرف می‌زنید صدای دریافتی کم می‌شود، تا صدای شما که از گوشی ترک‌نشین یا موتورسوار کناری ضبط می‌شود به گوش خودتان برنگردد.</string>
     <string name="sec_controls">🐾 کنترل بدون دست</string>
     <string name="controls_intro">همه‌چیز را بدون درآوردن گوشی کنترل کنید. یکی از چیدمان‌های آماده را بزنید، یا روی هر ردیف بزنید و کارش را خودتان انتخاب کنید.</string>
-    <string name="preset_standard">استاندارد</string>
-    <string name="preset_headset_only">فقط هدست</string>
     <string name="preset_music_first">اول موزیک</string>
     <string name="controls_headset">🎧 دکمهٔ هدست</string>
     <string name="controls_volume">📱 دکمه‌های صدای گوشی (با صفحهٔ خاموش هم کار می‌کند)</string>
-    <string name="controls_volume_note">ترکیب‌ها را سریع و پشت سر هم بزنید؛ بعدش صدای گوشی به حالت قبل برمی‌گردد. یک بار زدن معمولی فقط صدا را کم و زیاد می‌کند. تا وقتی RideTalk روشن است کار می‌کند. اگر صدا روی آخرین درجه باشد «بالا» حس نمی‌شود — یک درجه پایین‌تر نگه دارید.</string>
+    <string name="controls_volume_note">ترکیب‌ها را سریع و پشت سر هم بزنید؛ بعدش صدای گوشی به حالت قبل برمی‌گردد. یک بار زدن معمولی فقط صدا را کم و زیاد می‌کند. تا وقتی کاسکت مدیا روشن است کار می‌کند. اگر صدا روی آخرین درجه باشد «بالا» حس نمی‌شود — یک درجه پایین‌تر نگه دارید.</string>
     <string name="controls_pick">این حرکت چه کاری بکند؟</string>
     <string name="trig_HEADSET_1">۱ ضربه</string>
     <string name="trig_HEADSET_2">۲ ضربه</string>
@@ -224,4 +222,56 @@
     <string name="act_PREV_TRACK">آهنگ قبل</string>
     <string name="act_MUSIC_UP">موزیک بلندتر</string>
     <string name="act_MUSIC_DOWN">موزیک آرام‌تر</string>
+    <string name="say_mode_music">حالت موزیک</string>
+    <string name="say_mode_call">حالت مکالمه، میکروفن باز</string>
+    <string name="say_mic_on">میکروفن روشن</string>
+    <string name="say_mic_off">میکروفن خاموش</string>
+    <string name="say_intercom_back">اینترکام دوباره وصل شد</string>
+    <string name="say_joined">%s وصل شد</string>
+    <string name="say_joined_anon">یک همراه وصل شد</string>
+    <string name="say_left">%s قطع شد</string>
+    <string name="say_left_anon">یک همراه قطع شد</string>
+    <string name="say_back">%s برگشت</string>
+    <string name="say_back_anon">ارتباط برگشت</string>
+    <string name="say_on_call">%s پشت تلفن است</string>
+    <string name="say_on_call_anon">یک همراه پشت تلفن است</string>
+    <string name="say_call_over">تماس %s تمام شد</string>
+    <string name="say_call_over_anon">تماس همراه تمام شد</string>
+    <string name="sec_you">🐾 شما</string>
+    <string name="theme_pink">🩷 صورتی</string>
+    <string name="theme_blue">💙 آبی</string>
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_en">English</string>
+    <string name="mode_hifi_short">🎵\nموزیک</string>
+    <string name="mode_call_short">🎙\nمکالمهٔ دائم</string>
+    <string name="tiles_hint">بزنید تا روشن/خاموش شود · نگه دارید تا توضیحش را ببینید</string>
+    <string name="advanced_show">⚙ تنظیمات پیشرفته ▾</string>
+    <string name="advanced_hide">⚙ بستن تنظیمات پیشرفته ▴</string>
+    <string name="sec_mic">🎙 میکروفن</string>
+    <string name="preset_simple">ساده</string>
+    <string name="preset_full">کامل</string>
+    <string name="tile_voice">اعلام صوتی</string>
+    <string name="tile_cues">صداهای راهنما</string>
+    <string name="tile_rx">صدای تمیز</string>
+    <string name="tile_echo">بدون اکو</string>
+    <string name="tile_duck">کم شدن موزیک</string>
+    <string name="tile_battery">صرفه‌جویی باتری</string>
+    <string name="tile_feedback">ضد سوت</string>
+    <string name="tile_screen">صفحه روشن</string>
+    <string name="voice_prompts_note">به‌جای بوق، یک صدا می‌گوید «حالت موزیک»، «سارا وصل شد»، «میکروفن خاموش». از صدای خود گوشی استفاده می‌کند؛ اگر گوشی صدای فارسی نداشته باشد انگلیسی می‌گوید و اگر هیچ صدایی نداشته باشد بوق می‌زند.</string>
+    <string name="cues_note">صدا یا اعلام صوتی هنگام وصل و قطع شدن همراه‌ها، عوض شدن حالت و قطع میکروفن.</string>
+    <string name="duck_note">وقتی کسی صحبت می‌کند صدای موزیک کم می‌شود.</string>
+    <string name="screen_note">وقتی صفحهٔ رانندگی باز است صفحه خاموش نمی‌شود.</string>
+    <string name="welcome_sub">اینترکام و موزیک مشترک برای موتورسوارها، با هات‌اسپات</string>
+    <string name="welcome_style">سبک خودتان را انتخاب کنید</string>
+    <string name="welcome_pink">🩷\nصورتی</string>
+    <string name="welcome_blue">💙\nآبی</string>
+    <string name="welcome_lang">Language · زبان</string>
+    <string name="welcome_start">بزن بریم 🏍</string>
+    <string name="notif_on_call">📞 پشت تلفن — اینترکام متوقف است و بعد از تماس برمی‌گردد</string>
+    <string name="status_on_call">📞 پشت تلفن</string>
+    <string name="peer_on_call">📞 پشت تلفن</string>
+    <string name="on_call_banner">📞 در حال تماس تلفنی هستید. اینترکام متوقف شده تا تماس خصوصی بماند و بعد از قطع تماس خودش برمی‌گردد.</string>
+    <string name="music_rate">ارسال با %d کیلوبیت</string>
+    <string name="music_rate_low">ارسال با %d کیلوبیت (سیگنال ضعیف، خودکار کم شد)</string>
 </resources>

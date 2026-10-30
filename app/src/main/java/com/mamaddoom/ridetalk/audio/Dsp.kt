@@ -160,6 +160,37 @@ class StreamResampler(inRate: Int, outRate: Int, private val channels: Int) {
 }
 
 object Pcm {
+    /**
+     * Whole-buffer linear resampling, for short clips (announcements). When
+     * going down in rate a simple moving average first keeps the worst
+     * aliasing out; speech clips are 16–24 kHz so that is rarely needed.
+     */
+    fun resample(x: FloatArray, from: Int, to: Int): FloatArray {
+        if (from == to || x.isEmpty()) return x
+        var src = x
+        if (to < from) {
+            val w = (from + to - 1) / to
+            src = FloatArray(x.size) { i ->
+                var acc = 0f
+                var n = 0
+                for (k in maxOf(0, i - w / 2)..minOf(x.size - 1, i + w / 2)) {
+                    acc += x[k]
+                    n++
+                }
+                acc / n
+            }
+        }
+        val n = (src.size.toLong() * to / from).toInt()
+        return FloatArray(n) { i ->
+            val pos = i.toDouble() * from / to
+            val j = pos.toInt()
+            val f = (pos - j).toFloat()
+            val a = src[minOf(j, src.size - 1)]
+            val b = src[minOf(j + 1, src.size - 1)]
+            a + (b - a) * f
+        }
+    }
+
     fun rmsDb(x: FloatArray, n: Int): Float {
         var sum = 0.0
         for (i in 0 until n) sum += (x[i] * x[i]).toDouble()

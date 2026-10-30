@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme colours: pink or blue, chosen on first launch. -->
+    <attr name="cBg" format="color" />
+    <attr name="cSurface" format="color" />
+    <attr name="cSurface2" format="color" />
+    <attr name="cStroke" format="color" />
+    <attr name="cText" format="color" />
+    <attr name="cTextDim" format="color" />
+    <attr name="cAccent" format="color" />
+    <attr name="cAccentMid" format="color" />
+    <attr name="cAccentDark" format="color" />
+    <attr name="cRipple" format="color" />
+    <!-- Helmet art for the header and welcome screen. -->
+    <attr name="appArt" format="reference" />
+    <attr name="appArtBg" format="reference" />
+</resources>

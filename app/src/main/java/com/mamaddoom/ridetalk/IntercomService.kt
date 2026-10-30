@@ -51,9 +51,14 @@ class IntercomService : Service() {
     private var foregroundWithProjection = false
     private var wantProjection = false
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Look.wrap(base))
+    }
+
     override fun onCreate() {
         super.onCreate()
-        engine = Engine(applicationContext, ::onEngineState)
+        // Our own (language-wrapped) context, so notifications follow the app language.
+        engine = Engine(this, ::onEngineState)
         // Battery saver: switch off after a long time alone.
         engine.onAutoStop = { Handler(mainLooper).post { if (engine.running) stopIntercom() } }
         createChannel()
@@ -183,11 +188,12 @@ class IntercomService : Service() {
 
     private fun buildNotification(): Notification {
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+            this, 0, Intent(this, HomeActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
         val st = if (::engine.isInitialized && engine.running) engine.state() else null
         val text = when {
             st == null -> getString(R.string.notif_starting)
+            st.onCall -> getString(R.string.notif_on_call)
             st.talkSession -> getString(if (st.talkReady) R.string.talk_live else R.string.talk_preparing)
             st.peers.isEmpty() && st.standby -> getString(R.string.status_standby)
             st.peers.isEmpty() -> getString(R.string.status_searching)
@@ -234,7 +240,7 @@ class IntercomService : Service() {
         val st = engine.state()
         // Only touch the notification when its visible content changes.
         val key = "${st.peers.map { it.name }}|${st.muted}|${st.ptt}|${st.pttPressed}|${st.hifi}|" +
-            "${st.talkSession}|${st.talkReady}|${st.standby}"
+            "${st.talkSession}|${st.talkReady}|${st.standby}|${st.onCall}"
         if (key != lastNotificationKey) {
             lastNotificationKey = key
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())

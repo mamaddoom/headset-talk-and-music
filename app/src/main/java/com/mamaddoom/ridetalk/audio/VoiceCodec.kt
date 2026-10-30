@@ -62,6 +62,14 @@ class MusicEncoder(bitrate: Int = 128000) {
     }
     private val out = ByteArray(MAX_BYTES)
 
+    /** Target bitrate in bit/s; can change between packets. */
+    var bitrate: Int = bitrate
+        set(v) {
+            if (v == field) return
+            field = v
+            enc.setBitrate(v)
+        }
+
     /** Encodes one [Protocol.MUSIC_FRAMES]-frame stereo packet; returns the Opus bytes. */
     fun encode(pcm: ShortArray): ByteArray? = try {
         val n = enc.encode(pcm, 0, Protocol.MUSIC_FRAMES, out, 0, out.size)
