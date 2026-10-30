@@ -33,6 +33,10 @@ object RelayServers {
         Server("shiftr", "shiftr.io", "public.cloud.shiftr.io", 8883, score = 0, user = "public", password = "public"),
         Server("mqttcool", "MQTT.Cool", "broker.mqtt.cool", 8883, score = 0),
         Server("hivemq-dash", "HiveMQ Dashboard", "broker.mqttdashboard.com", 8883, score = 0),
+        Server("mosquitto-8883", "Mosquitto (8883)", "test.mosquitto.org", 8883, score = 0),
+        Server("eclipse-tls", "Eclipse (alt)", "mqtt.eclipseprojects.io", 8883, score = 0),
+        Server("emqx-cn", "EMQX (alt)", "broker-cn.emqx.io", 8883, score = 0),
+        Server("flespi", "flespi", "mqtt.flespi.io", 8883, score = 0),
     )
 
     fun byId(id: String) = ALL.firstOrNull { it.id == id }
