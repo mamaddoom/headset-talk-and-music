@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Kaskat Media</string>
+    <string name="app_name">Helmet Media</string>
     <string name="notif_channel">Intercom</string>
     <string name="notif_starting">Starting intercom…</string>
     <string name="notif_connected">Connected: %1$s</string>
@@ -59,7 +59,7 @@
     <string name="sec_settings">Battery &amp; reliability</string>
     <string name="name_hint">Your name (shown to the other rider)</string>
     <string name="battery_opt">Battery: no limits</string>
-    <string name="guide">For reliable use with the screen off:\n• Battery: set Kaskat Media to “No restrictions” / allow background activity.\n• If your phone has an “Autostart” or “Background apps” setting, allow Kaskat Media there (App settings).\n• Lock Kaskat Media in the recent-apps screen so the system does not close it.\n• Turn off “turn off hotspot automatically when idle” on the hotspot phone.\n• If Wi-Fi keeps switching to mobile data, disable the phone’s Wi-Fi assistant / smart network switch.</string>
+    <string name="guide">For reliable use with the screen off:\n• Battery: set Helmet Media to “No restrictions” / allow background activity.\n• If your phone has an “Autostart” or “Background apps” setting, allow Helmet Media there (App settings).\n• Lock Helmet Media in the recent-apps screen so the system does not close it.\n• Turn off “turn off hotspot automatically when idle” on the hotspot phone.\n• If Wi-Fi keeps switching to mobile data, disable the phone’s Wi-Fi assistant / smart network switch.</string>
     <string name="perm_denied">Microphone permission is required to talk.</string>
 
     <string name="route_default">phone default</string>
@@ -152,7 +152,7 @@
     <string name="chk_headset_ok">✅ Bluetooth headset connected</string>
     <string name="chk_headset_missing">⚠️ Connect your Bluetooth headset</string>
     <string name="chk_other_ok">✅ Your other phone is connected</string>
-    <string name="chk_other_missing">⚠️ Waiting for your other phone: start Kaskat Media there, pick “%1$s”, same name</string>
+    <string name="chk_other_missing">⚠️ Waiting for your other phone: start Helmet Media there, pick “%1$s”, same name</string>
     <string name="chk_one_ear_right">💡 Wear only the RIGHT earbud of this phone\'s headset</string>
     <string name="chk_one_ear_left">💡 Wear only the LEFT earbud of this phone\'s headset</string>
     <string name="talk_role_listen">🎵 This phone plays only music. Talking happens on your talk phone.</string>
@@ -197,7 +197,7 @@
     <string name="preset_music_first">Music first</string>
     <string name="controls_headset">🎧 Headset button</string>
     <string name="controls_volume">📱 Phone volume keys (work with the screen off)</string>
-    <string name="controls_volume_note">Combinations are pressed quickly one after another; afterwards the volume is put back where it was. A single press still just changes the volume. Works while Kaskat Media is on. If the volume is at the very top, “up” can’t be felt — keep it one step below.</string>
+    <string name="controls_volume_note">Combinations are pressed quickly one after another; afterwards the volume is put back where it was. A single press still just changes the volume. Works while Helmet Media is on. If the volume is at the very top, “up” can’t be felt — keep it one step below.</string>
     <string name="controls_pick">What should this do?</string>
     <string name="trig_HEADSET_1">1 tap</string>
     <string name="trig_HEADSET_2">2 taps</string>
