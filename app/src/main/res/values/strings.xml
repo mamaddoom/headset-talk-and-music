@@ -287,4 +287,5 @@
     <string name="update_failed">Couldn’t check. Needs internet (mobile data or Wi-Fi) for a moment.</string>
     <string name="update_allow">Allow “Install unknown apps” for Helmet Media, then come back and tap again.</string>
     <string name="update_banner">⬆ New version %1$s ready — tap to install</string>
+    <string name="theme_icon_note">The home-screen icon changes after you leave the app (not while the intercom is on).</string>
 </resources>

@@ -287,4 +287,5 @@
     <string name="update_failed">بررسی نشد. برای چند لحظه اینترنت لازم است (دیتا یا وای‌فای).</string>
     <string name="update_allow">«نصب برنامه‌های ناشناس» را برای Helmet Media مجاز کنید، برگردید و دوباره بزنید.</string>
     <string name="update_banner">⬆ نسخهٔ جدید %1$s آماده است — برای نصب بزنید</string>
+    <string name="theme_icon_note">آیکون روی صفحهٔ گوشی بعد از بیرون رفتن از برنامه عوض می‌شود (نه وقتی اینترکام روشن است).</string>
 </resources>

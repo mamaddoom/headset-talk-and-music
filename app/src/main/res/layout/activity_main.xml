@@ -389,6 +389,7 @@
                             <Button android:id="@+id/btnThemePink" style="@style/BigButton" android:text="@string/theme_pink" android:textSize="15sp" />
                             <Button android:id="@+id/btnThemeBlue" style="@style/BigButton" android:text="@string/theme_blue" android:textSize="15sp" />
                         </LinearLayout>
+                        <TextView style="@style/Note" android:text="@string/theme_icon_note" />
 
                         <TextView style="@style/Label" android:fontFamily="sans-serif-medium" android:text="@string/label_language" />
                         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp">

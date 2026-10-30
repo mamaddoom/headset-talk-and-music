@@ -28,14 +28,25 @@ object Look {
      * Shows the blue or the pink helmet on the home screen. Two launcher
      * entries point at the same screen; exactly one is enabled. The pink one
      * keeps the original component name, so existing shortcuts keep working.
+     *
+     * Switching makes many launchers close the app's open screen, so this is
+     * only called once the app is in the background (see HomeActivity.onStop),
+     * and it does nothing when the icon already matches.
      */
     fun applyLauncherIcon(context: Context, blue: Boolean) {
         val pm = context.packageManager
+        // Class names live in the code's package, which need not equal the application id.
+        fun cn(cls: String) = ComponentName(context.packageName, "${HomeActivity::class.java.name.substringBeforeLast('.')}.$cls")
+        /** Enabled now, counting "default" as what the manifest says (pink on, blue off). */
+        fun enabled(cls: String) = when (pm.getComponentEnabledSetting(cn(cls))) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT -> cls == "MainActivity"
+            else -> false
+        }
+        if (enabled("BlueLauncher") == blue && enabled("MainActivity") == !blue) return
         fun set(cls: String, on: Boolean) {
             val state = if (on) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            // Class names live in the code's package, which need not equal the application id.
-            val cn = ComponentName(context.packageName, "${HomeActivity::class.java.name.substringBeforeLast('.')}.$cls")
-            if (pm.getComponentEnabledSetting(cn) != state) pm.setComponentEnabledSetting(cn, state, PackageManager.DONT_KILL_APP)
+            pm.setComponentEnabledSetting(cn(cls), state, PackageManager.DONT_KILL_APP)
         }
         // Enable the new one first so there is never a moment with no launcher entry.
         if (blue) {

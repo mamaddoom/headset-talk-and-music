@@ -209,6 +209,11 @@ class HomeActivity : Activity() {
     override fun onStop() {
         visible = false
         uiHandler.removeCallbacks(tick)
+        // Swap the home-screen icon only now, with the app out of sight: launchers
+        // close the open screen when its icon changes. Never while the intercom runs.
+        if (!isChangingConfigurations && settings.onboarded && engine?.running != true) {
+            Look.applyLauncherIcon(this, settings.blueTheme)
+        }
         super.onStop()
     }
 
@@ -770,7 +775,6 @@ class HomeActivity : Activity() {
             pop(it)
             settings.onboarded = true
             if (settings.language.isEmpty()) settings.language = currentLanguage()
-            Look.applyLauncherIcon(this, settings.blueTheme)
             welcome.animate().alpha(0f).setDuration(250).withEndAction { welcome.visibility = View.GONE }.start()
         }
     }
@@ -782,8 +786,6 @@ class HomeActivity : Activity() {
     private fun chooseTheme(blue: Boolean) {
         if (settings.blueTheme == blue) return
         settings.blueTheme = blue
-        // On the welcome screen the icon is set once, on "start".
-        if (settings.onboarded) Look.applyLauncherIcon(this, blue)
         recreate()
     }
 
