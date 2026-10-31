@@ -471,6 +471,7 @@ class HomeActivity : Activity() {
             panel.visibility = if (show) View.VISIBLE else View.GONE
             (v as Button).setText(if (show) R.string.advanced_hide else R.string.advanced_show)
         }
+        setupConnection()
         findViewById<EditText>(R.id.editGroup).apply {
             setText(settings.groupCode)
             addTextChangedListener(afterChange {
@@ -704,6 +705,104 @@ class HomeActivity : Activity() {
             v.isActivated = on
             v.alpha = if (on) 1f else 0.55f
         }
+    }
+
+    // ---------------------------------------------------------------- connection (hotspot / online)
+
+    private fun setupConnection() {
+        findViewById<Button>(R.id.btnConnHotspot).setOnClickListener { chooseOnline(false) }
+        findViewById<Button>(R.id.btnConnOnline).setOnClickListener { chooseOnline(true) }
+        findViewById<EditText>(R.id.editGroupOnline).apply {
+            setText(settings.groupCode)
+            addTextChangedListener(afterChange {
+                if (!hasFocus()) return@afterChange
+                pendingGroupCode = it
+                uiHandler.removeCallbacks(applyGroupCode)
+                uiHandler.postDelayed(applyGroupCode, 800)
+                renderConnection(engine?.takeIf { e -> e.running }?.state())
+            })
+        }
+        buildServerList()
+    }
+
+    private fun chooseOnline(on: Boolean) {
+        if (settings.online == on) return
+        settings.online = on
+        // The link is chosen when the intercom starts: restart it if it is running.
+        if (engine?.running == true) {
+            toast(R.string.online_restart)
+            startService(Intent(this, IntercomService::class.java).setAction(IntercomService.ACTION_STOP))
+            uiHandler.postDelayed({ startIntercom() }, 800)
+        }
+        render()
+    }
+
+    private var serverListKey = ""
+
+    /** "Automatic" plus one row per server, with its score; the chosen one highlighted. */
+    private fun buildServerList() {
+        val list = findViewById<LinearLayout>(R.id.serverList)
+        val key = settings.onlineServer
+        if (key == serverListKey && list.childCount > 0) return
+        serverListKey = key
+        list.removeAllViews()
+        val rows = listOf("" to getString(R.string.online_auto)) +
+            com.mamaddoom.ridetalk.net.RelayServers.ALL.map { srv ->
+                srv.id to "🛰 ${srv.name}  ·  ${getString(R.string.online_score, srv.score)}"
+            }
+        for ((id, label) in rows) {
+            list.addView(TextView(this).apply {
+                text = label
+                setTextColor(colorOf(if (id == key) R.attr.cAccent else R.attr.cText))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                gravity = Gravity.CENTER_VERTICAL
+                minHeight = dp(52)
+                setPaddingRelative(dp(16), dp(6), dp(12), dp(6))
+                background = getDrawable(R.drawable.button)
+                isSelected = id == key
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(6) }
+                setOnClickListener { v ->
+                    pop(v)
+                    val e = engine
+                    if (e != null) e.setOnlineServer(id) else settings.onlineServer = id
+                    buildServerList()
+                }
+            })
+        }
+    }
+
+    private fun onlineStatusText(st: Engine.State?): String {
+        val codeOk = settings.groupCode.trim().length >= 8
+        return when {
+            !codeOk -> getString(R.string.online_no_code)
+            st == null || !st.online -> getString(R.string.online_off)
+            else -> when (st.onlineStatus) {
+                com.mamaddoom.ridetalk.net.OnlineTransport.Status.CONNECTED ->
+                    if (st.onlineRttMs >= 0) getString(R.string.online_connected_rtt, st.onlineServer, st.onlineRttMs)
+                    else getString(R.string.online_connected, st.onlineServer)
+                com.mamaddoom.ridetalk.net.OnlineTransport.Status.NO_CODE -> getString(R.string.online_no_code)
+                com.mamaddoom.ridetalk.net.OnlineTransport.Status.OFFLINE -> getString(R.string.online_offline)
+                else -> getString(R.string.online_connecting, st.onlineServer.ifEmpty { "…" })
+            }
+        }
+    }
+
+    private fun renderConnection(st: Engine.State?) {
+        val on = settings.online
+        findViewById<Button>(R.id.btnConnHotspot).isSelected = !on
+        findViewById<Button>(R.id.btnConnOnline).isSelected = on
+        findViewById<View>(R.id.onlinePanel).visibility = if (on) View.VISIBLE else View.GONE
+        if (!on) return
+        findViewById<TextView>(R.id.onlineStatus).text = onlineStatusText(st)
+        val field = findViewById<EditText>(R.id.editGroupOnline)
+        if (!field.hasFocus() && field.text.toString() != settings.groupCode) field.setText(settings.groupCode)
+        val typed = if (field.hasFocus()) field.text.toString() else settings.groupCode
+        findViewById<TextView>(R.id.onlineCodeNote).setText(
+            if (typed.trim().length in 1..7) R.string.online_code_short else R.string.online_code_note,
+        )
+        buildServerList()
     }
 
     // ---------------------------------------------------------------- updates
@@ -1250,7 +1349,13 @@ class HomeActivity : Activity() {
 
         renderPeers(st)
 
-        if (st == null || st.standby) {
+        if (st != null && st.online) {
+            linkQuality.text = onlineStatusText(st)
+            linkQuality.setTextColor(colorOf(
+                if (st.onlineStatus == com.mamaddoom.ridetalk.net.OnlineTransport.Status.CONNECTED) R.color.ok else R.attr.cAccent,
+            ))
+            route.text = if (st.standby) "" else getString(R.string.route, st.route)
+        } else if (st == null || st.standby) {
             linkQuality.text = getString(if (st == null) R.string.status_off else R.string.status_standby)
             linkQuality.setTextColor(colorOf(R.attr.cTextDim))
             route.text = ""
@@ -1463,6 +1568,7 @@ class HomeActivity : Activity() {
     }
 
     private fun renderSettings(st: Engine.State?) {
+        renderConnection(st)
         // Trip setup
         val two = settings.twoPhones
         val talkPhone = settings.isTalkPhone

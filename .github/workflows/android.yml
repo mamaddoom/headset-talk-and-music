@@ -93,6 +93,16 @@ jobs:
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
+      # Measures the public relay servers from here (connect time, round trip,
+      # loss at voice packet rate). Informational: never blocks the build.
+      - name: Probe relay servers
+        continue-on-error: true
+        env:
+          PROBE_RELAYS: "1"
+        run: |
+          ./gradlew --no-daemon testDebugUnitTest --tests '*RelayProbeTest*' --rerun || true
+          cat app/build/relay-probe.txt || echo "no probe report"
+
       - name: Build signed release APK
         run: ./gradlew --no-daemon assembleRelease lintDebug
 

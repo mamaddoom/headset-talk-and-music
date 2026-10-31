@@ -48,6 +48,16 @@ class Settings(context: Context) {
             p.edit().putString("lang", v).commit()
         }
 
+    /** Online mode: connect through a public relay server instead of the hotspot. */
+    var online: Boolean
+        get() = p.getBoolean("online", false)
+        set(v) = p.edit().putBoolean("online", v).apply()
+
+    /** Pinned relay server id; empty = automatic (best first, then fall back). */
+    var onlineServer: String
+        get() = p.getString("onlineServer", "").orEmpty()
+        set(v) = p.edit().putString("onlineServer", v).apply()
+
     /** Spoken announcements ("music mode", "Sara joined") instead of beeps, when the phone can speak. */
     var voicePrompts: Boolean
         get() = p.getBoolean("voicePrompts", true)

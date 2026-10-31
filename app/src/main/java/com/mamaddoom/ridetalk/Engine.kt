@@ -18,6 +18,8 @@ import com.mamaddoom.ridetalk.audio.MusicRateControl
 import com.mamaddoom.ridetalk.audio.PeerAudio
 import com.mamaddoom.ridetalk.audio.VoiceCapture
 import com.mamaddoom.ridetalk.audio.VoiceEncoder
+import com.mamaddoom.ridetalk.net.Link
+import com.mamaddoom.ridetalk.net.OnlineTransport
 import com.mamaddoom.ridetalk.net.PacketCrypto
 import com.mamaddoom.ridetalk.net.Protocol
 import com.mamaddoom.ridetalk.net.Transport
@@ -120,11 +122,18 @@ class Engine(
         val onCall: Boolean,
         /** Bitrate the shared music is sent at now (kbit/s), 0 when we send none. */
         val musicKbps: Int,
+        /** Online mode: relay status, server name and round trip (ms, -1 unknown). */
+        val online: Boolean,
+        val onlineStatus: OnlineTransport.Status?,
+        val onlineServer: String,
+        val onlineRttMs: Int,
     )
 
     val settings = Settings(context)
     private val myId = Random.nextInt(1, Int.MAX_VALUE)
-    private val transport = Transport(context, myId, this)
+    /** Hotspot LAN or online relay; chosen when the intercom starts. */
+    @Volatile private var transport: Link = Transport(context, myId, this)
+    private val online get() = transport is OnlineTransport
     private val router = AudioRouter(context) { restartAudioSoon() }
     val music = MusicPlayer(context, this)
 
@@ -232,7 +241,13 @@ class Engine(
         running = true
         startedMs = System.currentTimeMillis()
         lastPeerMs = 0
+        transport = if (settings.online) {
+            OnlineTransport(myId, this, { settings.onlineServer.ifEmpty { null } }, ::notifyState)
+        } else {
+            Transport(context, myId, this)
+        }
         transport.crypto = groupCrypto()
+        applyMusicRate()
         transport.start()
         onCall = false
         reconcileAudio()
@@ -525,8 +540,19 @@ class Engine(
         }
     }
 
-    private fun groupCrypto(): PacketCrypto? =
-        settings.groupCode.takeIf { it.isNotBlank() }?.let { PacketCrypto(it) }
+    private fun groupCrypto(): PacketCrypto? {
+        val code = settings.groupCode.trim()
+        if (!online) return code.takeIf { it.isNotEmpty() }?.let { PacketCrypto(it) }
+        // Online the code is the only thing keeping strangers out: require a real one, stretch it hard.
+        if (code.length < MIN_ONLINE_CODE) return null
+        return PacketCrypto(code, PacketCrypto.ONLINE_ITERATIONS, PacketCrypto.ONLINE_SALT)
+    }
+
+    /** Pins a relay server by id, or "" for automatic; reconnects at once. */
+    fun setOnlineServer(id: String) {
+        settings.onlineServer = id
+        onCtl { transport.crypto = transport.crypto } // drops the connection; it reconnects to the new choice
+    }
 
     private fun playCue(cue: Mixer.Cue, queue: Boolean = false) {
         if (!settings.cues) return
@@ -717,7 +743,8 @@ class Engine(
         override fun run() {
             if (!running) return
             val quiet = !transmitting && !music.playing && appCapture == null
-            if (audioMode != AudioMode.OFF && quiet && peers.isNotEmpty()) {
+            // Keepalives wake a sleeping Wi-Fi radio; online the relay connection pings itself.
+            if (!online && audioMode != AudioMode.OFF && quiet && peers.isNotEmpty()) {
                 val len = Protocol.encodeKeepalive(keepaliveBuf, myId, keepaliveSeq++)
                 transport.sendToPeers(keepaliveBuf.array(), len)
             }
@@ -757,8 +784,9 @@ class Engine(
     private fun applyMusicRate() {
         val l = musicRate.current
         synchronized(musicBuf) {
-            musicEncoder.bitrate = l.bitrate
-            musicRedundancy = l.redundancy
+            // Online: mobile data both ways, and the relay's TCP already resends lost packets.
+            musicEncoder.bitrate = if (online) minOf(l.bitrate, ONLINE_MUSIC_BITRATE) else l.bitrate
+            musicRedundancy = if (online) 1 else l.redundancy
         }
         notifyState()
     }
@@ -999,9 +1027,14 @@ class Engine(
         if (n <= 0) return
         val frame = opusOut.copyOf(n)
         voiceHistory.addFirst(frame)
-        while (voiceHistory.size > Protocol.VOICE_REDUNDANCY) voiceHistory.removeLast()
-        val len = Protocol.encodeFrames(voiceBuf, Protocol.TYPE_VOICE, myId, voiceSeq++, voiceHistory)
-        transport.sendToPeers(voiceBuf.array(), len)
+        // Online the relay link is TCP (nothing to repair) but free relays cap the packet
+        // rate: two frames go out together every 40 ms instead of one every 20 ms.
+        while (voiceHistory.size > (if (online) ONLINE_BATCH else Protocol.VOICE_REDUNDANCY)) voiceHistory.removeLast()
+        val seq = voiceSeq++
+        if (!online || seq % ONLINE_BATCH == ONLINE_BATCH - 1) {
+            val len = Protocol.encodeFrames(voiceBuf, Protocol.TYPE_VOICE, myId, seq, voiceHistory)
+            transport.sendToPeers(voiceBuf.array(), len)
+        }
         mixer?.localSpeechAtMs = System.currentTimeMillis()
         if (micTesting) loopback.voice.put(loopbackSeq++, frame)
     }
@@ -1042,9 +1075,11 @@ class Engine(
             frame = musicEncoder.encode(pcm) ?: return
             seq = musicSeq.getAndIncrement()
             musicHistory.addFirst(frame)
-            while (musicHistory.size > musicRedundancy) musicHistory.removeLast()
-            val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
-            transport.sendToPeers(musicBuf.array(), len)
+            while (musicHistory.size > (if (online) ONLINE_BATCH else musicRedundancy)) musicHistory.removeLast()
+            if (!online || seq % ONLINE_BATCH == ONLINE_BATCH - 1) {
+                val len = Protocol.encodeFrames(musicBuf, Protocol.TYPE_MUSIC, myId, seq, musicHistory)
+                transport.sendToPeers(musicBuf.array(), len)
+            }
         }
         if (playLocally) {
             // Our own music goes through the same buffer (and decoder) as everyone else's: in sync.
@@ -1149,7 +1184,11 @@ class Engine(
             wifiRssi = transport.wifiRssi,
             wifiMhz = transport.wifiMhz,
             onCall = onCall,
-            musicKbps = if (music.playing || cap != null) musicRate.current.bitrate / 1000 else 0,
+            musicKbps = if (music.playing || cap != null) musicEncoder.bitrate / 1000 else 0,
+            online = online,
+            onlineStatus = (transport as? OnlineTransport)?.status,
+            onlineServer = (transport as? OnlineTransport)?.server?.name.orEmpty(),
+            onlineRttMs = (transport as? OnlineTransport)?.rttMs ?: -1,
         )
     }
 
@@ -1179,6 +1218,10 @@ class Engine(
         const val TALK_IDLE_MS = 2500L
         const val TALK_MIN_MS = 4000L
         const val CALL_START_MS = 900L
+        const val MIN_ONLINE_CODE = 8
+        const val ONLINE_MUSIC_BITRATE = 64_000
+        /** Frames per relay packet online (packet rate halved to 25/s per stream). */
+        const val ONLINE_BATCH = 2
         const val CALL_END_MS = 2000L
         val FIXED_PHRASES = intArrayOf(
             R.string.say_mode_music, R.string.say_mode_call, R.string.say_mic_on, R.string.say_mic_off,

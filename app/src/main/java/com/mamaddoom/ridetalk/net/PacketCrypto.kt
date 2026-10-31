@@ -17,8 +17,25 @@ import javax.crypto.spec.SecretKeySpec
  * [ENCRYPTED_FLAG]. The nonce is sender id + type + sequence number, unique
  * per packet because every stream counts its own sequence.
  */
-class PacketCrypto(code: String) {
-    private val key = SecretKeySpec(deriveKey(code), "AES")
+class PacketCrypto(
+    code: String,
+    /** Hotspot: light KDF (the radio range is the first barrier). Online: much stronger. */
+    iterations: Int = 4000,
+    salt: String = "RideTalk-group-v1",
+) {
+    private val raw = deriveKey(code, iterations, salt)
+    private val key = SecretKeySpec(raw, "AES")
+
+    /**
+     * A name for the group's relay channel that reveals nothing about the code
+     * (one-way from the derived key), so strangers on a public broker can't
+     * find the channel, and finding it gives no shortcut to the code.
+     */
+    val channelId: String by lazy {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(raw, "HmacSHA256"))
+        mac.doFinal("relay-channel".toByteArray()).joinToString("") { b -> (b.toInt() and 0xFF).toString(16).padStart(2, '0') }.take(32)
+    }
 
     // Cipher objects are not thread-safe; every sending/receiving thread gets its own.
     private val ciphers = object : ThreadLocal<Cipher>() {
@@ -75,8 +92,12 @@ class PacketCrypto(code: String) {
         private const val TAG_BITS = 128
         private const val NONCE = 12
 
-        private fun deriveKey(code: String): ByteArray {
-            val spec = PBEKeySpec(code.trim().toCharArray(), "RideTalk-group-v1".toByteArray(), 4000, 128)
+        /** Online groups: the code travels past public servers, so guessing it must be slow. */
+        const val ONLINE_ITERATIONS = 200_000
+        const val ONLINE_SALT = "HelmetMedia-online-v1"
+
+        private fun deriveKey(code: String, iterations: Int, salt: String): ByteArray {
+            val spec = PBEKeySpec(code.trim().toCharArray(), salt.toByteArray(), iterations, 128)
             return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
         }
 
